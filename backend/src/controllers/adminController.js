@@ -1,0 +1,337 @@
+const User = require('../models/User');
+const Attendance = require('../models/Attendance');
+const Complaint = require('../models/Complaint');
+
+// @desc    Get dashboard stats
+// @route   GET /api/admin/stats
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const totalStudents = await User.countDocuments({ role: 'student' });
+    const todayRecords = await Attendance.find({ date: today });
+
+    const presentToday = todayRecords.filter(r => r.status === 'Present').length;
+    const lateToday = todayRecords.filter(r => r.status === 'Late').length;
+    const absentToday = totalStudents - presentToday - lateToday;
+
+    // Weekly chart data
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyData = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayRecords = await Attendance.find({ date: dateStr });
+      const dayPresent = dayRecords.filter(r => r.status === 'Present').length;
+      const dayLate = dayRecords.filter(r => r.status === 'Late').length;
+      const dayAbsent = totalStudents - dayPresent - dayLate;
+      weeklyData.push({
+        day: days[d.getDay()],
+        present: dayPresent,
+        absent: Math.max(0, dayAbsent),
+        late: dayLate
+      });
+    }
+
+    // Active vs total
+    const activeStudents = await Attendance.distinct('userId', { date: today });
+
+    // Pending complaints
+    const pendingComplaints = await Complaint.countDocuments({ status: 'Pending' });
+
+    // Calculate attendance rate
+    const weekTotal = weeklyData.reduce((sum, d) => sum + d.present + d.late, 0);
+    const weekPossible = totalStudents * 7 || 1;
+    const attendanceRate = ((weekTotal / weekPossible) * 100).toFixed(1);
+
+    res.json({
+      totalStudents,
+      presentToday,
+      absentToday: Math.max(0, absentToday),
+      lateToday,
+      weeklyData,
+      activeStudents: activeStudents.length,
+      pendingComplaints,
+      attendanceRate
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+};
+
+// @desc    Get all students
+// @route   GET /api/admin/students
+exports.getStudents = async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' }).sort({ name: 1 });
+    const today = new Date().toISOString().split('T')[0];
+
+    const result = await Promise.all(students.map(async (student) => {
+      // Get today's attendance
+      const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
+
+      // Get total attendance stats
+      const totalRecords = await Attendance.countDocuments({ userId: student._id });
+      const presentRecords = await Attendance.countDocuments({
+        userId: student._id,
+        status: { $in: ['Present', 'Late'] }
+      });
+      const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+
+      return {
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        room: student.room || 'N/A',
+        department: student.department || 'N/A',
+        phone: student.phone,
+        attendanceRate: `${rate}%`,
+        status: todayRecord ? 'Inside' : 'Outside'
+      };
+    }));
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+};
+
+// @desc    Add a student
+// @route   POST /api/admin/students
+exports.addStudent = async (req, res) => {
+  try {
+    const { name, email, room, department, phone, password } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+
+    const student = await User.create({
+      name,
+      email,
+      password: password || 'password123',
+      role: 'student',
+      room: room || '',
+      department: department || '',
+      phone: phone || ''
+    });
+
+    res.status(201).json({
+      id: student._id,
+      name: student.name,
+      email: student.email,
+      room: student.room,
+      department: student.department,
+      attendanceRate: '100%',
+      status: 'Outside'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to add student' });
+  }
+};
+
+// @desc    Get attendance records (with filters)
+// @route   GET /api/admin/attendance
+exports.getAttendance = async (req, res) => {
+  try {
+    const { date, status } = req.query;
+    const filter = {};
+
+    if (date) filter.date = date;
+    if (status && status !== 'all') filter.status = status;
+
+    const records = await Attendance.find(filter)
+      .populate('userId', 'name room email department')
+      .sort({ timestamp: -1 })
+      .limit(200);
+
+    const formatted = records.map(r => ({
+      id: r._id,
+      name: r.userId?.name || 'Unknown',
+      room: r.userId?.room || 'N/A',
+      email: r.userId?.email || '',
+      date: r.date,
+      time: r.time,
+      status: r.status,
+      location: r.location,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      distance: r.distance
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch attendance records' });
+  }
+};
+
+// @desc    Get reports & analytics
+// @route   GET /api/admin/reports
+exports.getReports = async (req, res) => {
+  try {
+    const totalStudents = await User.countDocuments({ role: 'student' });
+
+    // Monthly data (last 5 months)
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyData = [];
+    for (let i = 4; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const month = d.getMonth();
+      const year = d.getFullYear();
+
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const endMonth = month + 2 > 12 ? 1 : month + 2;
+      const endYear = month + 2 > 12 ? year + 1 : year;
+      const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+
+      const records = await Attendance.find({
+        date: { $gte: startDate, $lt: endDate }
+      });
+
+      monthlyData.push({
+        month: months[month],
+        present: records.filter(r => r.status === 'Present').length,
+        late: records.filter(r => r.status === 'Late').length,
+        absent: records.filter(r => r.status === 'Absent').length
+      });
+    }
+
+    // Weekly trend (last 5 weeks)
+    const trendData = [];
+    for (let i = 4; i >= 0; i--) {
+      const weekEnd = new Date();
+      weekEnd.setDate(weekEnd.getDate() - i * 7);
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 6);
+
+      const startStr = weekStart.toISOString().split('T')[0];
+      const endStr = weekEnd.toISOString().split('T')[0];
+
+      const records = await Attendance.find({
+        date: { $gte: startStr, $lte: endStr }
+      });
+
+      const total = records.length || 1;
+      const presentLate = records.filter(r => r.status === 'Present' || r.status === 'Late').length;
+      trendData.push({
+        week: `W${5 - i}`,
+        rate: Math.round((presentLate / total) * 100)
+      });
+    }
+
+    // Pie data for current month
+    const now = new Date();
+    const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const currentRecords = await Attendance.find({ date: { $gte: currentMonthStart } });
+
+    const pieData = [
+      { name: 'Present', value: currentRecords.filter(r => r.status === 'Present').length },
+      { name: 'Late', value: currentRecords.filter(r => r.status === 'Late').length },
+      { name: 'Absent', value: currentRecords.filter(r => r.status === 'Absent').length }
+    ];
+
+    // Department-wise (aggregate by department)
+    const departments = await User.aggregate([
+      { $match: { role: 'student' } },
+      { $group: { _id: '$department', count: { $sum: 1 } } }
+    ]);
+
+    const departmentData = await Promise.all(departments.map(async (dept) => {
+      const deptName = dept._id || 'Unassigned';
+      const deptStudents = await User.find({ role: 'student', department: dept._id });
+      const deptUserIds = deptStudents.map(u => u._id);
+      const deptAttendance = await Attendance.countDocuments({
+        userId: { $in: deptUserIds },
+        status: { $in: ['Present', 'Late'] }
+      });
+      const deptTotal = await Attendance.countDocuments({ userId: { $in: deptUserIds } });
+
+      return {
+        name: deptName,
+        value: dept.count,
+        present: deptAttendance,
+        attendance: deptTotal > 0 ? parseFloat(((deptAttendance / deptTotal) * 100).toFixed(1)) : 0
+      };
+    }));
+
+    // Overall stats
+    const allRecords = await Attendance.countDocuments();
+    const allPresent = await Attendance.countDocuments({ status: { $in: ['Present', 'Late'] } });
+    const avgRate = allRecords > 0 ? ((allPresent / allRecords) * 100).toFixed(1) : '0';
+
+    res.json({
+      monthlyData,
+      trendData,
+      pieData,
+      departmentData,
+      totalStudents,
+      avgAttendanceRate: `${avgRate}%`,
+      totalPresentMonth: currentRecords.filter(r => r.status === 'Present' || r.status === 'Late').length,
+      totalAbsentMonth: currentRecords.filter(r => r.status === 'Absent').length
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+};
+
+// @desc    Get all complaints
+// @route   GET /api/admin/complaints
+exports.getComplaints = async (req, res) => {
+  try {
+    const complaints = await Complaint.find()
+      .populate('userId', 'name room email')
+      .sort({ createdAt: -1 });
+
+    const formatted = complaints.map(c => ({
+      id: c._id,
+      studentName: c.userId?.name || 'Unknown',
+      studentRoom: c.userId?.room || 'N/A',
+      studentEmail: c.userId?.email || '',
+      category: c.category,
+      description: c.description,
+      status: c.status,
+      adminResponse: c.adminResponse,
+      date: c.createdAt.toISOString().split('T')[0]
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch complaints' });
+  }
+};
+
+// @desc    Update complaint status
+// @route   PUT /api/admin/complaints/:id
+exports.updateComplaint = async (req, res) => {
+  try {
+    const { status, adminResponse } = req.body;
+    const complaint = await Complaint.findByIdAndUpdate(
+      req.params.id,
+      { status, adminResponse },
+      { new: true }
+    ).populate('userId', 'name room email');
+
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    res.json({
+      id: complaint._id,
+      studentName: complaint.userId?.name || 'Unknown',
+      studentRoom: complaint.userId?.room || 'N/A',
+      category: complaint.category,
+      description: complaint.description,
+      status: complaint.status,
+      adminResponse: complaint.adminResponse,
+      date: complaint.createdAt.toISOString().split('T')[0]
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update complaint' });
+  }
+};
