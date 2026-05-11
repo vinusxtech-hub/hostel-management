@@ -25,12 +25,28 @@ exports.getAttendanceSettings = async (req, res) => {
       isOpen = currentMinutes >= checkInMinutes || currentMinutes <= cutoffMinutes;
     }
 
+    // Departments list (configurable via env, comma-separated)
+    const defaultDepartments = 'Computer Science,AIDS,ECE/EX,Civil/Mechanical,Pharmacy';
+    const departments = (process.env.DEPARTMENTS || defaultDepartments)
+      .split(',')
+      .map(d => d.trim())
+      .filter(Boolean);
+
+    // Complaint categories (configurable via env, comma-separated)
+    const defaultCategories = 'Maintenance,Electrical,Plumbing,Cleanliness,Internet/Wi-Fi,Mess Food,Other';
+    const complaintCategories = (process.env.COMPLAINT_CATEGORIES || defaultCategories)
+      .split(',')
+      .map(c => c.trim())
+      .filter(Boolean);
+
     res.json({
       checkInTime,
       cutoffTime,
       geofenceRadius,
       status: isOpen ? 'Open' : 'Closed',
-      locationRequired: 'Inside Hostel'
+      locationRequired: 'Inside Hostel',
+      departments,
+      complaintCategories
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch attendance settings' });

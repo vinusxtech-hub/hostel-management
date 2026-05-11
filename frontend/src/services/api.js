@@ -100,6 +100,12 @@ export const api = {
         headers: authHeaders(),
       });
       return handleResponse(response);
+    },
+    getNotices: async () => {
+      const response = await fetch(`${BASE_URL}/student/notices`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
     }
   },
   
@@ -122,6 +128,18 @@ export const api = {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    bulkImportStudents: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${BASE_URL}/admin/students/bulk-import`, {
+        method: 'POST',
+        headers: {
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
+        },
+        body: formData,
       });
       return handleResponse(response);
     },
@@ -149,6 +167,35 @@ export const api = {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    getNotices: async () => {
+      const response = await fetch(`${BASE_URL}/admin/notices`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    createNotice: async (data) => {
+      const response = await fetch(`${BASE_URL}/admin/notices`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    updateNotice: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/admin/notices/${id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    deleteNotice: async (id) => {
+      const response = await fetch(`${BASE_URL}/admin/notices/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
       });
       return handleResponse(response);
     }

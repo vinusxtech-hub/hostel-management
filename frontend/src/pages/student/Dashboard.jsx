@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { useToast } from "../../hooks/useToast";
@@ -6,15 +6,96 @@ import { CardSkeleton } from "../../components/Skeleton";
 import { MapView } from "../../components/MapView";
 import { useGeolocation } from "../../hooks/useGeolocation";
 import { api } from "../../services/api";
-import { MapPin, Clock, CheckCircle, AlertCircle, MapPinOff, RefreshCw } from "lucide-react";
+import { MapPin, Clock, CheckCircle, AlertCircle, MapPinOff, RefreshCw, Timer, Lock } from "lucide-react";
+
+// Helper: parse "HH:MM" into total minutes since midnight
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  return h * 60 + m;
+};
+
+// Helper: format seconds into MM:SS or HH:MM:SS
+const formatCountdown = (totalSeconds) => {
+  if (totalSeconds <= 0) return "00:00";
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  if (hrs > 0) {
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
 
 export const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [isMarkingAttendance, setIsMarkingAttendance] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [timeInfo, setTimeInfo] = useState({ isOpen: false, countdown: 0, progress: 0 });
   const { location, error: geoError, isLoading: geoLoading, refreshLocation } = useGeolocation();
   const { success, error } = useToast();
+
+  // Compute window status and countdown every second
+  const computeTimeInfo = useCallback(() => {
+    if (!settings) return;
+    const checkInMin = parseTimeToMinutes(settings.checkInTime);
+    const cutoffMin = parseTimeToMinutes(settings.cutoffTime);
+
+    const now = new Date();
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+    // Determine total window length in minutes (handle overnight)
+    let windowLength;
+    if (cutoffMin > checkInMin) {
+      windowLength = cutoffMin - checkInMin;
+    } else {
+      windowLength = (1440 - checkInMin) + cutoffMin;
+    }
+
+    // Check if currently open
+    let isOpen;
+    if (cutoffMin > checkInMin) {
+      isOpen = currentMin >= checkInMin && currentMin <= cutoffMin;
+    } else {
+      isOpen = currentMin >= checkInMin || currentMin <= cutoffMin;
+    }
+
+    // Compute remaining seconds until cutoff
+    let remainingSec = 0;
+    if (isOpen) {
+      const cutoffSec = cutoffMin * 60;
+      if (cutoffMin > checkInMin) {
+        remainingSec = cutoffSec - currentSec;
+      } else {
+        // Overnight: if we're past checkIn, remaining = (1440*60 - currentSec) + cutoffSec
+        if (currentMin >= checkInMin) {
+          remainingSec = (1440 * 60 - currentSec) + cutoffSec;
+        } else {
+          remainingSec = cutoffSec - currentSec;
+        }
+      }
+    }
+
+    // Compute how many minutes have elapsed in the window
+    let elapsedMin = 0;
+    if (isOpen) {
+      if (cutoffMin > checkInMin) {
+        elapsedMin = currentMin - checkInMin;
+      } else {
+        if (currentMin >= checkInMin) {
+          elapsedMin = currentMin - checkInMin;
+        } else {
+          elapsedMin = (1440 - checkInMin) + currentMin;
+        }
+      }
+    }
+
+    const progress = windowLength > 0 ? Math.min((elapsedMin / windowLength) * 100, 100) : 0;
+
+    setTimeInfo({ isOpen, countdown: Math.max(0, remainingSec), progress });
+  }, [settings]);
 
   useEffect(() => {
     setIsLoading(false);
@@ -28,6 +109,13 @@ export const Dashboard = () => {
     };
     loadSettings();
   }, []);
+
+  // Tick countdown every second
+  useEffect(() => {
+    computeTimeInfo();
+    const interval = setInterval(computeTimeInfo, 1000);
+    return () => clearInterval(interval);
+  }, [computeTimeInfo]);
 
   const handleMarkAttendance = async () => {
     if (!location) {
@@ -165,18 +253,27 @@ export const Dashboard = () => {
 
       {/* Attendance Time Window */}
       <div className="animate-slide-in-up" style={{ animationDelay: '300ms' }}>
-        <Card className="relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-50/50 to-indigo-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <Card className={`relative overflow-hidden group ${timeInfo.isOpen ? 'border-green-200' : 'border-red-200'}`}>
+          <div className={`absolute inset-0 ${timeInfo.isOpen ? 'bg-gradient-to-r from-green-50/50 to-emerald-50/50' : 'bg-gradient-to-r from-red-50/30 to-slate-50/30'} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
           <div className="relative z-10">
-            <p className="text-sm text-slate-500 font-medium uppercase tracking-wider mb-4">Attendance Time Window</p>
-            <div className="flex items-center justify-between mb-6">
+            {/* Title + Live Status Badge */}
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Attendance Time Window</p>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${timeInfo.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <div className={`w-2 h-2 rounded-full ${timeInfo.isOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                {timeInfo.isOpen ? 'OPEN' : 'CLOSED'}
+              </div>
+            </div>
+
+            {/* Time Slots */}
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm text-slate-600">Check-in Time</p>
+                <p className="text-sm text-slate-600">Check-in Opens</p>
                 <p className="text-2xl font-bold text-primary-700">{settings?.checkInTime ?? "—"}</p>
               </div>
               <div className="h-12 w-px bg-slate-200"></div>
               <div>
-                <p className="text-sm text-slate-600">Cutoff Time</p>
+                <p className="text-sm text-slate-600">Window Closes</p>
                 <p className="text-2xl font-bold text-indigo-700">{settings?.cutoffTime ?? "—"}</p>
               </div>
               <div className="h-12 w-px bg-slate-200"></div>
@@ -185,10 +282,33 @@ export const Dashboard = () => {
                 <p className="text-2xl font-bold text-emerald-700">{settings ? `${settings.geofenceRadius}m` : "—"}</p>
               </div>
             </div>
-            <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-100 p-4 rounded-xl flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span>Late marking after {settings?.cutoffTime ?? "cutoff time"}. You must be within {settings ? `${settings.geofenceRadius}m` : "the geofence"} of the hostel.</span>
-            </div>
+
+            {/* Progress Bar + Countdown */}
+            {timeInfo.isOpen ? (
+              <>
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Time Remaining</span>
+                    <span className="text-sm font-bold text-primary-700 font-mono tabular-nums">{formatCountdown(timeInfo.countdown)}</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 transition-all duration-1000 ease-linear"
+                      style={{ width: `${100 - timeInfo.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-sm text-green-700 bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3">
+                  <Timer className="w-5 h-5 flex-shrink-0" />
+                  <span>Attendance window is <strong>open</strong>. You have <strong>{formatCountdown(timeInfo.countdown)}</strong> left to mark your attendance.</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-100 p-4 rounded-xl flex items-center gap-3">
+                <Lock className="w-5 h-5 flex-shrink-0" />
+                <span>Attendance window is <strong>closed</strong>. It opens daily at <strong>{settings?.checkInTime ?? "—"}</strong> and closes at <strong>{settings?.cutoffTime ?? "—"}</strong>.</span>
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -198,17 +318,21 @@ export const Dashboard = () => {
         <Button
           onClick={handleMarkAttendance}
           isLoading={isMarkingAttendance}
-          disabled={!location || location.type === "Outside" || !!geoError}
+          disabled={!location || location.type === "Outside" || !!geoError || !timeInfo.isOpen}
           size="lg"
-          className="flex-1 text-lg shadow-xl shadow-primary-500/20"
+          className={`flex-1 text-lg shadow-xl ${timeInfo.isOpen ? 'shadow-primary-500/20' : 'shadow-slate-300/20 !bg-slate-400 cursor-not-allowed'}`}
         >
-          {isMarkingAttendance
-            ? "Marking Attendance..."
-            : geoError
-            ? "Location Unavailable"
-            : location?.type === "Outside"
-            ? `Outside Hostel (${location.distanceDisplay}) — Cannot Mark`
-            : "Mark Attendance"}
+          {!timeInfo.isOpen ? (
+            <><Lock className="w-5 h-5 mr-2" /> Attendance Window Closed</>
+          ) : isMarkingAttendance ? (
+            "Marking Attendance..."
+          ) : geoError ? (
+            "Location Unavailable"
+          ) : location?.type === "Outside" ? (
+            `Outside Hostel (${location.distanceDisplay}) — Cannot Mark`
+          ) : (
+            <><CheckCircle className="w-5 h-5 mr-2" /> Mark Attendance</>
+          )}
         </Button>
         <Button variant="secondary" size="lg" onClick={refreshLocation}>
           <RefreshCw className="w-5 h-5" />

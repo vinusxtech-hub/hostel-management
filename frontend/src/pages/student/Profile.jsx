@@ -138,18 +138,6 @@ export const Profile = () => {
         </Card>
       </div>
 
-      {/* Danger Zone */}
-      <div className="animate-slide-in-up" style={{ animationDelay: '300ms' }}>
-        <Card className="border-red-200 bg-red-50/50 backdrop-blur-xl">
-          <h3 className="text-xl font-bold text-red-700 mb-2">Danger Zone</h3>
-          <p className="text-slate-600 mb-6">Logout from your account and end your session.</p>
-          <Button variant="danger" size="lg" className="w-full sm:w-auto shadow-lg shadow-red-500/20" onClick={handleLogout}>
-            <LogOut className="h-5 w-5 mr-2" />
-            Logout Securely
-          </Button>
-        </Card>
-      </div>
-
       {/* Edit Profile Modal */}
       <Modal isOpen={isEditing} onClose={() => setIsEditing(false)}>
         <div className="space-y-5">

@@ -98,22 +98,6 @@ export const Login = () => {
           Create one
         </Link>
       </p>
-
-      <div className="border-t border-slate-200 pt-4 mt-4">
-        <p className="text-center text-xs text-slate-500">
-          Demo Accounts — <span className="font-medium">Password: password</span>
-        </p>
-        <div className="flex justify-center gap-4 mt-2">
-          <button type="button" onClick={() => { setEmail("student@test.com"); setPassword("password"); }}
-            className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-medium transition-colors">
-            Student
-          </button>
-          <button type="button" onClick={() => { setEmail("admin@test.com"); setPassword("password"); }}
-            className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-medium transition-colors">
-            Admin
-          </button>
-        </div>
-      </div>
     </form>
   );
 };

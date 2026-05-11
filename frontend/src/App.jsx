@@ -20,12 +20,14 @@ import { Activity } from "./pages/student/Activity";
 import { Complaints } from "./pages/student/Complaints";
 import { Reports as StudentReports } from "./pages/student/Reports";
 import { Profile } from "./pages/student/Profile";
+import { Notices as StudentNotices } from "./pages/student/Notices";
 
 // Admin Pages
 import { AdminDashboard } from "./pages/admin/Dashboard";
 import { AdminStudents } from "./pages/admin/Students";
 import { Attendance as AdminAttendance } from "./pages/admin/Attendance";
 import { AdminReports } from "./pages/admin/Reports";
+import { AdminNotices } from "./pages/admin/Notices";
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -57,6 +59,7 @@ function AppContent() {
           <Route path="activity" element={<Activity />} />
           <Route path="complaints" element={<Complaints />} />
           <Route path="reports" element={<StudentReports />} />
+          <Route path="notices" element={<StudentNotices />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
@@ -66,6 +69,7 @@ function AppContent() {
           <Route path="students" element={<AdminStudents />} />
           <Route path="attendance" element={<AdminAttendance />} />
           <Route path="reports" element={<AdminReports />} />
+          <Route path="notices" element={<AdminNotices />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

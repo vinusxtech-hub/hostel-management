@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 
-const HOSTEL_LAT = parseFloat(import.meta.env.VITE_HOSTEL_LAT) || 28.6139;
-const HOSTEL_LNG = parseFloat(import.meta.env.VITE_HOSTEL_LNG) || 77.2090;
-const RADIUS_KM = 0.2; // 200 meters
+const HOSTEL_LAT = parseFloat(import.meta.env.VITE_HOSTEL_LAT) || 23.3018021;
+const HOSTEL_LNG = parseFloat(import.meta.env.VITE_HOSTEL_LNG) || 77.3378888;
+const RADIUS_KM = (parseInt(import.meta.env.VITE_GEOFENCE_RADIUS_METERS) || 200) / 1000;
 
 // Haversine formula to calculate distance in km
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {

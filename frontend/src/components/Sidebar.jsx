@@ -7,6 +7,7 @@ import {
   AlertCircle,
   BarChart3,
   Users,
+  Megaphone,
   X
 } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -16,14 +17,16 @@ const studentLinks = [
   { icon: CheckSquare, label: "Attendance", path: "/attendance" },
   { icon: Clock, label: "Activity", path: "/activity" },
   { icon: AlertCircle, label: "Complaints", path: "/complaints" },
-  { icon: BarChart3, label: "Reports", path: "/reports" }
+  { icon: BarChart3, label: "Reports", path: "/reports" },
+  { icon: Megaphone, label: "Notices", path: "/notices" }
 ];
 
 const adminLinks = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
   { icon: Users, label: "Students", path: "/admin/students" },
   { icon: CheckSquare, label: "Attendance", path: "/admin/attendance" },
-  { icon: BarChart3, label: "Reports", path: "/admin/reports" }
+  { icon: BarChart3, label: "Reports", path: "/admin/reports" },
+  { icon: Megaphone, label: "Notices", path: "/admin/notices" }
 ];
 
 export const Sidebar = ({ isOpen, onClose }) => {

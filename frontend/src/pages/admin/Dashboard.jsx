@@ -48,7 +48,7 @@ export const AdminDashboard = () => {
       icon: UserCheck, 
       color: "text-green-600", 
       bg: "bg-green-50",
-      trend: "On time"
+      trend: `${stats.presentToday} checked in`
     },
     { 
       title: "Absent Today", 
@@ -56,7 +56,7 @@ export const AdminDashboard = () => {
       icon: UserX, 
       color: "text-red-600", 
       bg: "bg-red-50",
-      trend: "Not checked in"
+      trend: `${stats.absentToday} missing`
     },
     { 
       title: "Late Check-ins", 
@@ -64,7 +64,7 @@ export const AdminDashboard = () => {
       icon: Clock, 
       color: "text-yellow-600", 
       bg: "bg-yellow-50",
-      trend: "After 10 PM"
+      trend: `${stats.lateToday} after cutoff`
     },
   ];
 

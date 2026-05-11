@@ -1,8 +1,8 @@
 import { APIProvider, Map, AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-const HOSTEL_LAT = parseFloat(import.meta.env.VITE_HOSTEL_LAT) || 28.6139;
-const HOSTEL_LNG = parseFloat(import.meta.env.VITE_HOSTEL_LNG) || 77.2090;
+const HOSTEL_LAT = parseFloat(import.meta.env.VITE_HOSTEL_LAT) || 23.3018021;
+const HOSTEL_LNG = parseFloat(import.meta.env.VITE_HOSTEL_LNG) || 77.3378888;
 
 const MapContent = ({ userLat, userLng, hostelLat, hostelLng }) => {
   const center = userLat && userLng
@@ -44,16 +44,22 @@ const FallbackMap = ({ userLat, userLng, distance, isInside }) => (
     </div>
     {userLat && userLng ? (
       <>
-        <p className="text-sm font-medium text-slate-700 mb-1">Your Coordinates</p>
-        <p className="text-xs text-slate-500 font-mono">{userLat.toFixed(6)}, {userLng.toFixed(6)}</p>
+        <div className={`w-3 h-3 rounded-full mb-3 animate-pulse ${isInside ? 'bg-green-500' : 'bg-red-500'}`}></div>
+        <p className="text-sm font-semibold text-slate-800 mb-1">
+          {isInside ? '📍 Location Verified' : '📍 Location Detected'}
+        </p>
+        <p className="text-xs text-slate-500">You are <span className="font-semibold text-slate-700">{distance}</span> from the hostel</p>
         <div className={`mt-3 px-4 py-2 rounded-full text-sm font-semibold ${isInside ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-          {isInside ? '✓ Inside Geofence' : '✗ Outside Geofence'} — {distance} km
+          {isInside ? '✓ Within Hostel Zone' : '✗ Outside Hostel Zone'}
         </div>
       </>
     ) : (
-      <p className="text-sm text-slate-500">Fetching location...</p>
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm text-slate-500">Detecting your location...</p>
+      </div>
     )}
-    <p className="text-xs text-slate-400 mt-3">Set VITE_GOOGLE_MAPS_API_KEY for interactive map</p>
+    {/* <p className="text-xs text-slate-400 mt-3">Set VITE_GOOGLE_MAPS_API_KEY for interactive map</p> */}
   </div>
 );
 

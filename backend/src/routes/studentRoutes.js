@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const studentController = require('../controllers/studentController');
 const settingsController = require('../controllers/settingsController');
+const noticeController = require('../controllers/noticeController');
 
 // All student routes require authentication
 router.use(protect);
@@ -15,5 +16,6 @@ router.post('/complaints', studentController.submitComplaint);
 router.get('/profile', studentController.getProfile);
 router.put('/profile', studentController.updateProfile);
 router.get('/settings', settingsController.getAttendanceSettings);
+router.get('/notices', noticeController.getActiveNotices);
 
 module.exports = router;

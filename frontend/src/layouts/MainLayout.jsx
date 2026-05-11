@@ -11,7 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  Users
+  Users,
+  Megaphone
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
@@ -21,6 +22,7 @@ const studentNavigation = [
   { name: 'Activity', href: '/activity', icon: History },
   { name: 'Complaints', href: '/complaints', icon: MessageSquare },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Notices', href: '/notices', icon: Megaphone },
   { name: 'Profile', href: '/profile', icon: User },
 ];
 
@@ -29,6 +31,7 @@ const adminNavigation = [
   { name: 'Students', href: '/admin/students', icon: Users },
   { name: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  { name: 'Notices', href: '/admin/notices', icon: Megaphone },
 ];
 
 export const MainLayout = () => {

@@ -29,6 +29,7 @@ const autoSeed = async () => {
   const User = require('./models/User');
   const Attendance = require('./models/Attendance');
   const Complaint = require('./models/Complaint');
+  const Notice = require('./models/Notice');
 
   const userCount = await User.countDocuments();
   if (userCount > 0) {
@@ -101,6 +102,65 @@ const autoSeed = async () => {
   ]);
 
   console.log(`Seeded: 1 admin, ${students.length} students, ${attendanceRecords.length} attendance records, 6 complaints`);
+
+    // Seed notices
+    const futureDate = new Date();
+    futureDate.setMonth(futureDate.getMonth() + 1);
+
+    await Notice.create([
+      {
+        title: 'Hostel Curfew Timings Updated',
+        content: 'Please note that effective immediately, the hostel curfew time has been updated to 10:00 PM on weekdays and 11:00 PM on weekends. All students must ensure they are inside the hostel premises before the curfew time. Late entries will be recorded and reported to the warden.',
+        category: 'General',
+        priority: 'High',
+        isPinned: true,
+        createdBy: admin._id
+      },
+      {
+        title: 'Water Supply Maintenance — Block B',
+        content: 'The water supply in Block B will be temporarily disrupted on May 15th from 9:00 AM to 2:00 PM due to scheduled pipeline maintenance. Students are advised to store sufficient water beforehand. We apologize for the inconvenience.',
+        category: 'Maintenance',
+        priority: 'Medium',
+        isPinned: false,
+        expiresAt: futureDate,
+        createdBy: admin._id
+      },
+      {
+        title: 'Annual Cultural Fest — Participate Now!',
+        content: 'The Annual Cultural Fest "Utsav 2026" is scheduled for May 20-22. Events include dance, music, drama, and art competitions. Registration is open until May 18th. Visit the notice board near the mess hall for registration forms or contact your floor representative.',
+        category: 'Event',
+        priority: 'Medium',
+        isPinned: true,
+        expiresAt: futureDate,
+        createdBy: admin._id
+      },
+      {
+        title: '🚨 Fire Drill Scheduled — Mandatory Attendance',
+        content: 'A fire safety drill will be conducted on May 14th at 4:00 PM. All residents MUST participate. Assembly point: Main ground near Gate 2. Floor wardens will guide evacuation. This is mandatory for all hostel residents without exception.',
+        category: 'Emergency',
+        priority: 'Urgent',
+        isPinned: true,
+        createdBy: admin._id
+      },
+      {
+        title: 'Semester Exam Schedule Released',
+        content: 'The end-semester examination schedule for May-June 2026 has been released. Students can check their individual timetables on the university portal. Exam hall allocations will be shared 3 days before the first exam. Contact your department HOD for any clashes.',
+        category: 'Academic',
+        priority: 'High',
+        isPinned: false,
+        createdBy: admin._id
+      },
+      {
+        title: 'Wi-Fi Upgrade Notice',
+        content: 'We are upgrading the hostel Wi-Fi infrastructure to support higher speeds. The new system will provide up to 100 Mbps per user. During the transition period (May 12-13), intermittent connectivity issues may occur. Thank you for your patience.',
+        category: 'General',
+        priority: 'Low',
+        isPinned: false,
+        createdBy: admin._id
+      }
+    ]);
+
+    console.log('Seeded: 6 notices');
   console.log('Admin: admin@test.com / password');
   console.log('Student: student@test.com / password');
 };

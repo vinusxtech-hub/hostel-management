@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { useToast } from "../../hooks/useToast";
+import { api } from "../../services/api";
 import { UserPlus, Eye, EyeOff } from "lucide-react";
 
 export const Signup = () => {
@@ -22,6 +23,19 @@ export const Signup = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await api.student.getSettings();
+        setDepartments(data.departments || []);
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -182,11 +196,9 @@ export const Signup = () => {
             className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 bg-white text-sm"
           >
             <option value="">Select</option>
-            <option value="Computer Science">Computer Science</option>
-            <option value="AIDS">AIDS</option>
-            <option value="ECE/EX">ECE/EX</option>
-            <option value="Civil/Mechanical">Civil/Mechanical</option>
-            <option value="Pharmacy">Pharmacy</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
           </select>
         </div>
       </div>
