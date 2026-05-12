@@ -8,6 +8,8 @@ import {
   BarChart3,
   Users,
   Megaphone,
+  MessageSquare,
+  User,
   X
 } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -29,10 +31,18 @@ const adminLinks = [
   { icon: Megaphone, label: "Notices", path: "/admin/notices" }
 ];
 
+const wardenLinks = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/warden/dashboard" },
+  { icon: Users, label: "Students", path: "/warden/students" },
+  { icon: MessageSquare, label: "Complaints", path: "/warden/complaints" },
+  { icon: Megaphone, label: "Notices", path: "/warden/notices" },
+  { icon: User, label: "Profile", path: "/warden/profile" }
+];
+
 export const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const location = useLocation();
-  const links = user?.role === "admin" ? adminLinks : studentLinks;
+  const links = user?.role === "admin" ? adminLinks : user?.role === "warden" ? wardenLinks : studentLinks;
 
   const isActive = (path) => {
     return location.pathname === path;

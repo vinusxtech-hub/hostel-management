@@ -6,6 +6,7 @@ const { connectDB } = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const wardenRoutes = require('./routes/wardenRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/warden', wardenRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -45,6 +47,15 @@ const autoSeed = async () => {
     email: 'admin@test.com',
     password: 'password',
     role: 'admin'
+  });
+
+  // Create warden
+  const warden = await User.create({
+    name: 'Rajesh Sharma',
+    email: 'warden@test.com',
+    password: 'password',
+    role: 'warden',
+    phone: '+91-9876000111'
   });
 
   // Create students
@@ -101,7 +112,7 @@ const autoSeed = async () => {
     { userId: students[4]._id, category: 'Plumbing', description: 'Water leakage in bathroom', status: 'Resolved' },
   ]);
 
-  console.log(`Seeded: 1 admin, ${students.length} students, ${attendanceRecords.length} attendance records, 6 complaints`);
+  console.log(`Seeded: 1 admin, 1 warden, ${students.length} students, ${attendanceRecords.length} attendance records, 6 complaints`);
 
     // Seed notices
     const futureDate = new Date();
@@ -162,6 +173,7 @@ const autoSeed = async () => {
 
     console.log('Seeded: 6 notices');
   console.log('Admin: admin@test.com / password');
+  console.log('Warden: warden@test.com / password');
   console.log('Student: student@test.com / password');
 };
 

@@ -3,10 +3,8 @@ import { useState, useEffect } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
-import { Input } from "../../components/Input";
 import { useToast } from "../../hooks/useToast";
 import { Loader } from "../../components/Loader";
-import { TableSkeleton } from "../../components/Skeleton";
 import { api } from "../../services/api";
 import { CheckCircle, Clock, MapPin } from "lucide-react";
 
@@ -15,7 +13,7 @@ export const Attendance = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [settings, setSettings] = useState(null);
-  const { success, error } = useToast();
+  const { error } = useToast();
 
   useEffect(() => {
     fetchAttendanceHistory();
@@ -37,20 +35,6 @@ export const Attendance = () => {
       setAttendanceHistory(data);
     } catch (err) {
       error("Failed to load attendance history");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleMarkAttendance = async () => {
-    setIsLoading(true);
-    try {
-      const location = { type: "Inside" };
-      const result = await api.student.markAttendance(location);
-      setAttendanceHistory([result, ...attendanceHistory]);
-      success(`Attendance marked as ${result.status}!`);
-    } catch (err) {
-      error(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -85,11 +69,8 @@ export const Attendance = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Attendance</h1>
-            <p className="text-slate-600 mt-1">Mark your daily attendance and view history</p>
+            <p className="text-slate-600 mt-1">View your daily attendance status and history</p>
           </div>
-          <Button onClick={handleMarkAttendance} isLoading={isLoading} size="lg">
-            Mark Attendance
-          </Button>
         </div>
 
         {/* Current Status Card */}

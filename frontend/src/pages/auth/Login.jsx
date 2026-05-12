@@ -28,7 +28,7 @@ export const Login = () => {
       const user = await login(email, password);
       showSuccess(`Welcome back, ${user.name}!`);
       setTimeout(() => {
-        navigate(user.role === "admin" ? "/admin/dashboard" : "/dashboard");
+        navigate(user.role === "admin" ? "/admin/dashboard" : user.role === "warden" ? "/warden/dashboard" : "/dashboard");
       }, 500);
     } catch (err) {
       showError(err.message);
@@ -93,9 +93,8 @@ export const Login = () => {
       </Button>
 
       <p className="text-center text-sm text-slate-600">
-        Don't have an account?{" "}
-        <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-semibold">
-          Create one
+        <Link to="/forgot-password" className="text-primary-600 hover:text-primary-700 font-semibold">
+          Forgot Password?
         </Link>
       </p>
     </form>

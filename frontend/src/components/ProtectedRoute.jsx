@@ -2,6 +2,14 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
 import { Loader } from "./Loader";
 
+const getRoleHome = (role) => {
+  switch (role) {
+    case "admin": return "/admin/dashboard";
+    case "warden": return "/warden/dashboard";
+    default: return "/dashboard";
+  }
+};
+
 export const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { user, isLoading } = useAuth();
 
@@ -18,7 +26,7 @@ export const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getRoleHome(user.role)} replace />;
   }
 
   return children;

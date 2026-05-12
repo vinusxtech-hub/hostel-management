@@ -9,10 +9,20 @@ export const AuthLayout = () => {
     if (user?.role === "admin") {
       return <Navigate to="/admin/dashboard" state={{ from: location }} replace />;
     }
+    if (user?.role === "warden") {
+      return <Navigate to="/warden/dashboard" state={{ from: location }} replace />;
+    }
     return <Navigate to="/dashboard" state={{ from: location }} replace />;
   }
 
-  const isSignup = location.pathname === "/signup";
+  const authCopy = {
+    "/login": { title: "Welcome Back", subtitle: "Hostel Attendance Management System" },
+    "/signup": { title: "Create Account", subtitle: "Register your student profile to get started" },
+    "/forgot-password": { title: "Forgot Password", subtitle: "Recover your account access securely" },
+    "/reset-password": { title: "Set New Password", subtitle: "Choose a fresh password for your account" }
+  };
+  const copy = authCopy[location.pathname] || authCopy["/login"];
+  const isWideCard = location.pathname === "/signup";
 
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -28,14 +38,14 @@ export const AuthLayout = () => {
           </div>
         </div>
         <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-          {isSignup ? "Create Account" : "Welcome Back"}
+          {copy.title}
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          Hostel Attendance Management System
+          {copy.subtitle}
         </p>
       </div>
 
-      <div className={`mt-8 sm:mx-auto sm:w-full relative z-10 animate-slide-in-up ${isSignup ? 'sm:max-w-2xl' : 'sm:max-w-md'}`}>
+      <div className={`mt-8 sm:mx-auto sm:w-full relative z-10 animate-slide-in-up ${isWideCard ? 'sm:max-w-2xl' : 'sm:max-w-md'}`}>
         <div className="glass-panel rounded-2xl py-8 px-4 sm:px-10 border border-white/40 shadow-xl">
           <Outlet />
         </div>

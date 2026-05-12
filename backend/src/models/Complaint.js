@@ -24,6 +24,15 @@ const complaintSchema = new mongoose.Schema({
   adminResponse: {
     type: String,
     default: ''
+  },
+  wardenResponse: {
+    type: String,
+    default: ''
+  },
+  resolvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true

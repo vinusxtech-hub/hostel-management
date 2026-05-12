@@ -36,4 +36,13 @@ const adminOnly = (req, res, next) => {
   }
 };
 
-module.exports = { protect, adminOnly };
+// Warden only middleware
+const wardenOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'warden') {
+    next();
+  } else {
+    return res.status(403).json({ error: 'Access denied — warden only' });
+  }
+};
+
+module.exports = { protect, adminOnly, wardenOnly };

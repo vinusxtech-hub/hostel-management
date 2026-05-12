@@ -12,6 +12,8 @@ import { MainLayout } from "./layouts/MainLayout";
 // Auth
 import { Login } from "./pages/auth/Login";
 import { Signup } from "./pages/auth/Signup";
+import { ForgotPassword } from "./pages/auth/ForgotPassword";
+import { ResetPassword } from "./pages/auth/ResetPassword";
 
 // Student Pages
 import { Dashboard as StudentDashboard } from "./pages/student/Dashboard";
@@ -28,6 +30,12 @@ import { AdminStudents } from "./pages/admin/Students";
 import { Attendance as AdminAttendance } from "./pages/admin/Attendance";
 import { AdminReports } from "./pages/admin/Reports";
 import { AdminNotices } from "./pages/admin/Notices";
+
+// Warden Pages
+import { WardenDashboard } from "./pages/warden/Dashboard";
+import { WardenStudents } from "./pages/warden/Students";
+import { WardenComplaints } from "./pages/warden/Complaints";
+import { WardenNotices } from "./pages/warden/Notices";
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -51,6 +59,12 @@ function AppContent() {
         <Route path="/signup" element={<AuthLayout />}>
           <Route index element={<Signup />} />
         </Route>
+        <Route path="/forgot-password" element={<AuthLayout />}>
+          <Route index element={<ForgotPassword />} />
+        </Route>
+        <Route path="/reset-password" element={<AuthLayout />}>
+          <Route index element={<ResetPassword />} />
+        </Route>
 
         {/* Student Routes */}
         <Route path="/" element={<ProtectedRoute requiredRole="student"><MainLayout /></ProtectedRoute>}>
@@ -73,8 +87,17 @@ function AppContent() {
           <Route path="profile" element={<Profile />} />
         </Route>
 
+        {/* Warden Routes */}
+        <Route path="/warden" element={<ProtectedRoute requiredRole="warden"><MainLayout /></ProtectedRoute>}>
+          <Route path="dashboard" element={<WardenDashboard />} />
+          <Route path="students" element={<WardenStudents />} />
+          <Route path="complaints" element={<WardenComplaints />} />
+          <Route path="notices" element={<WardenNotices />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+
         {/* Default Routes */}
-        <Route path="/" element={<Navigate to={user ? (user?.role === "admin" ? "/admin/dashboard" : "/dashboard") : "/login"} />} />
+        <Route path="/" element={<Navigate to={user ? (user?.role === "admin" ? "/admin/dashboard" : user?.role === "warden" ? "/warden/dashboard" : "/dashboard") : "/login"} />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <ToastContainer toasts={toasts} onRemove={removeToast} />

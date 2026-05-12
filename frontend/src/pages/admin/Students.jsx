@@ -131,7 +131,7 @@ export const AdminStudents = () => {
   const downloadTemplate = () => {
     // Create a sample CSV template for download
     const headers = "Name,Email,Room,Department,Phone,Password";
-    const sample1 = "John Doe,john@example.com,A-101,Computer Science,9876543210,password123";
+    const sample1 = "Anshu,anshu@example.com,A-101,Computer Science,9876543210,password123";
     const sample2 = "Jane Smith,jane@example.com,B-205,AIDS,9123456789,password123";
     const csvContent = `${headers}\n${sample1}\n${sample2}`;
     const blob = new Blob([csvContent], { type: 'text/csv' });

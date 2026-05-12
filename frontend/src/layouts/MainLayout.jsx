@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   Users,
-  Megaphone
+  Megaphone,
+  Shield
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
@@ -34,12 +35,20 @@ const adminNavigation = [
   { name: 'Notices', href: '/admin/notices', icon: Megaphone },
 ];
 
+const wardenNavigation = [
+  { name: 'Dashboard', href: '/warden/dashboard', icon: LayoutDashboard },
+  { name: 'Students', href: '/warden/students', icon: Users },
+  { name: 'Complaints', href: '/warden/complaints', icon: MessageSquare },
+  { name: 'Notices', href: '/warden/notices', icon: Megaphone },
+  { name: 'Profile', href: '/warden/profile', icon: User },
+];
+
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const navigation = user?.role === 'admin' ? adminNavigation : studentNavigation;
+  const navigation = user?.role === 'admin' ? adminNavigation : user?.role === 'warden' ? wardenNavigation : studentNavigation;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -101,14 +110,16 @@ export const MainLayout = () => {
           <div className="flex items-center gap-4">
             <div className="text-sm text-right hidden sm:block">
               <p className="font-medium text-slate-900">{user?.name}</p>
-              <p className="text-slate-500">{user?.role === 'admin' ? 'Administrator' : `Room ${user?.room}`}</p>
+              <p className="text-slate-500">{user?.role === 'admin' ? 'Administrator' : user?.role === 'warden' ? 'Warden' : `Room ${user?.room}`}</p>
             </div>
             <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold shrink-0">
               {user?.name.charAt(0)}
             </div>
-            <button onClick={logout} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-              <LogOut className="h-5 w-5" />
-            </button>
+            {user?.role !== 'student' && (
+              <button onClick={logout} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                <LogOut className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </header>
 
