@@ -12,6 +12,7 @@ router.use(adminOnly);
 
 router.get('/stats', adminController.getDashboardStats);
 router.get('/students', adminController.getStudents);
+router.get('/students/:id', adminController.getStudentDetails);
 router.post('/students', adminController.addStudent);
 router.post('/students/bulk-import', upload.single('file'), adminController.bulkImportStudents);
 router.get('/attendance', adminController.getAttendance);
@@ -24,5 +25,9 @@ router.get('/notices', noticeController.getAllNotices);
 router.post('/notices', noticeController.createNotice);
 router.put('/notices/:id', noticeController.updateNotice);
 router.delete('/notices/:id', noticeController.deleteNotice);
+
+// Warden management routes
+router.get('/wardens', adminController.getWardens);
+router.get('/wardens/:id', adminController.getWardenDetails);
 
 module.exports = router;

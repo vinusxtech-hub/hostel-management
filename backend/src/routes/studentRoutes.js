@@ -4,6 +4,7 @@ const { protect } = require('../middleware/auth');
 const studentController = require('../controllers/studentController');
 const settingsController = require('../controllers/settingsController');
 const noticeController = require('../controllers/noticeController');
+const leaveController = require('../controllers/leaveController');  // Integration: Leave Management System
 
 // All student routes require authentication
 router.use(protect);
@@ -17,5 +18,10 @@ router.get('/profile', studentController.getProfile);
 router.put('/profile', studentController.updateProfile);
 router.get('/settings', settingsController.getAttendanceSettings);
 router.get('/notices', noticeController.getActiveNotices);
+
+// Leave Management routes
+router.post('/leaves', leaveController.createLeaveRequest);
+router.get('/leaves', leaveController.getMyLeaves);
+router.put('/leaves/:id/cancel', leaveController.cancelLeaveRequest);
 
 module.exports = router;

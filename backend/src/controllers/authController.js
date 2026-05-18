@@ -2,6 +2,13 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const normalizeHostelSection = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['boys', 'boy', 'male', 'm'].includes(normalized)) return 'boys';
+  if (['girls', 'girl', 'female', 'f'].includes(normalized)) return 'girls';
+  return '';
+};
+
 // Generate JWT token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -15,6 +22,7 @@ const formatUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  hostelSection: user.hostelSection,
   room: user.room,
   phone: user.phone,
   parentPhone: user.parentPhone,
@@ -27,10 +35,11 @@ const formatUser = (user) => ({
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, room, phone, department } = req.body;
+    const { name, email, password, room, phone, department, hostelSection } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ error: 'An account with this email already exists' });
     }
@@ -38,8 +47,9 @@ exports.register = async (req, res) => {
     // Create user (role defaults to 'student')
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
+      hostelSection: normalizeHostelSection(hostelSection),
       room: room || '',
       phone: phone || '',
       department: department || ''
@@ -66,13 +76,14 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Please provide email and password' });
     }
 
     // Find user and include password for comparison
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }

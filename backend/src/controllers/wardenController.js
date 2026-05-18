@@ -1,37 +1,54 @@
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Complaint = require('../models/Complaint');
+const LeaveRequest = require('../models/LeaveRequest');  // Integration: Leave Management System
+
+const normalizeHostelSection = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['boys', 'boy', 'male', 'm'].includes(normalized)) return 'boys';
+  if (['girls', 'girl', 'female', 'f'].includes(normalized)) return 'girls';
+  return '';
+};
+
+const getHostelSectionFilter = (user) => {
+  const hostelSection = normalizeHostelSection(user?.hostelSection);
+  return hostelSection ? { hostelSection } : {};
+};
 
 // @desc    Get warden dashboard stats
 // @route   GET /api/warden/stats
 exports.getDashboardStats = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const totalStudents = await User.countDocuments({ role: 'student' });
-    const todayRecords = await Attendance.find({ date: today });
+    const studentFilter = { role: 'student', ...getHostelSectionFilter(req.user) };
+    const studentIds = await User.find(studentFilter).distinct('_id');
+    const totalStudents = studentIds.length;
+    const todayRecords = await Attendance.find({ date: today, userId: { $in: studentIds } });
 
     const presentToday = todayRecords.filter(r => r.status === 'Present').length;
     const lateToday = todayRecords.filter(r => r.status === 'Late').length;
     const absentToday = totalStudents - presentToday - lateToday;
 
     // Complaint stats
-    const pendingComplaints = await Complaint.countDocuments({ status: 'Pending' });
-    const inProgressComplaints = await Complaint.countDocuments({ status: 'In Progress' });
-    const resolvedComplaints = await Complaint.countDocuments({ status: 'Resolved' });
-    const rejectedComplaints = await Complaint.countDocuments({ status: 'Rejected' });
+    const complaintFilter = studentIds.length ? { userId: { $in: studentIds } } : { userId: null };
+    const pendingComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'Pending' });
+    const inProgressComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'In Progress' });
+    const resolvedComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'Resolved' });
+    const rejectedComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'Rejected' });
     const totalComplaints = pendingComplaints + inProgressComplaints + resolvedComplaints + rejectedComplaints;
 
     // Today's resolved
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const resolvedToday = await Complaint.countDocuments({
+      ...complaintFilter,
       status: 'Resolved',
       updatedAt: { $gte: startOfDay }
     });
 
     // Recent complaints (last 5)
-    const recentComplaints = await Complaint.find()
-      .populate('userId', 'name room email')
+    const recentComplaints = await Complaint.find(complaintFilter)
+      .populate('userId', 'name room email hostelSection')
       .sort({ createdAt: -1 })
       .limit(5);
 
@@ -39,6 +56,7 @@ exports.getDashboardStats = async (req, res) => {
       id: c._id,
       studentName: c.userId?.name || 'Unknown',
       studentRoom: c.userId?.room || 'N/A',
+      hostelSection: c.userId?.hostelSection || '',
       category: c.category,
       description: c.description.substring(0, 80) + (c.description.length > 80 ? '...' : ''),
       status: c.status,
@@ -57,9 +75,11 @@ exports.getDashboardStats = async (req, res) => {
       dayEnd.setHours(23, 59, 59, 999);
 
       const newComplaints = await Complaint.countDocuments({
+        ...complaintFilter,
         createdAt: { $gte: dayStart, $lte: dayEnd }
       });
       const resolvedDay = await Complaint.countDocuments({
+        ...complaintFilter,
         status: 'Resolved',
         updatedAt: { $gte: dayStart, $lte: dayEnd }
       });
@@ -70,6 +90,13 @@ exports.getDashboardStats = async (req, res) => {
         resolved: resolvedDay
       });
     }
+
+    // Integration: Leave Management System — leave stats
+    const leaveFilter = studentIds.length ? { studentId: { $in: studentIds } } : { studentId: null };
+    const pendingLeaves = await LeaveRequest.countDocuments({ ...leaveFilter, status: 'Pending' });
+    const approvedLeaves = await LeaveRequest.countDocuments({ ...leaveFilter, status: 'Approved' });
+    const rejectedLeaves = await LeaveRequest.countDocuments({ ...leaveFilter, status: 'Rejected' });
+    const totalLeaves = pendingLeaves + approvedLeaves + rejectedLeaves;
 
     res.json({
       totalStudents,
@@ -83,7 +110,13 @@ exports.getDashboardStats = async (req, res) => {
       rejectedComplaints,
       resolvedToday,
       recentComplaints: formattedRecent,
-      weeklyComplaints
+      weeklyComplaints,
+      hostelSection: req.user.hostelSection || '',
+      // Leave stats
+      totalLeaves,
+      pendingLeaves,
+      approvedLeaves,
+      rejectedLeaves
     });
   } catch (error) {
     console.error('Warden dashboard error:', error);
@@ -95,7 +128,7 @@ exports.getDashboardStats = async (req, res) => {
 // @route   GET /api/warden/students
 exports.getStudents = async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' }).sort({ name: 1 });
+    const students = await User.find({ role: 'student', ...getHostelSectionFilter(req.user) }).sort({ name: 1 });
     const today = new Date().toISOString().split('T')[0];
 
     const result = await Promise.all(students.map(async (student) => {
@@ -115,6 +148,8 @@ exports.getStudents = async (req, res) => {
         id: student._id,
         name: student.name,
         email: student.email,
+        hostelSection: student.hostelSection || '',
+        building: student.building || '',
         room: student.room || 'N/A',
         department: student.department || 'N/A',
         phone: student.phone || 'N/A',
@@ -142,6 +177,12 @@ exports.getStudentDetails = async (req, res) => {
     if (!student || student.role !== 'student') {
       return res.status(404).json({ error: 'Student not found' });
     }
+    if (
+      normalizeHostelSection(req.user.hostelSection) &&
+      student.hostelSection !== normalizeHostelSection(req.user.hostelSection)
+    ) {
+      return res.status(403).json({ error: 'Access denied for this hostel section' });
+    }
 
     // Get attendance history (last 30 days)
     const attendanceHistory = await Attendance.find({ userId: student._id })
@@ -159,26 +200,46 @@ exports.getStudentDetails = async (req, res) => {
       status: { $in: ['Present', 'Late'] }
     });
     const lateRecords = await Attendance.countDocuments({ userId: student._id, status: 'Late' });
+    const absentRecords = await Attendance.countDocuments({ userId: student._id, status: 'Absent' });
+    const onLeaveRecords = await Attendance.countDocuments({ userId: student._id, status: 'On Leave' });
     const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+
+    // Leave requests
+    let leaveRequests = [];
+    try {
+      leaveRequests = await LeaveRequest.find({ studentId: student._id })
+        .sort({ createdAt: -1 })
+        .limit(20);
+    } catch (e) {
+      // LeaveRequest model may not have data yet
+    }
+
+    // Today's status
+    const today = new Date().toISOString().split('T')[0];
+    const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
 
     res.json({
       student: {
         id: student._id,
         name: student.name,
         email: student.email,
+        hostelSection: student.hostelSection || '',
+        building: student.building || '',
         room: student.room || 'N/A',
         department: student.department || 'N/A',
         phone: student.phone || 'N/A',
         parentPhone: student.parentPhone || 'N/A',
         address: student.address || 'N/A',
-        createdAt: student.createdAt
+        createdAt: student.createdAt,
+        todayStatus: todayRecord ? todayRecord.status : 'Absent'
       },
       attendance: {
         rate,
         totalDays: totalRecords,
         presentDays: presentRecords,
         lateDays: lateRecords,
-        absentDays: totalRecords - presentRecords,
+        absentDays: absentRecords,
+        onLeaveDays: onLeaveRecords,
         history: attendanceHistory.map(a => ({
           date: a.date,
           time: a.time,
@@ -191,9 +252,19 @@ exports.getStudentDetails = async (req, res) => {
         category: c.category,
         description: c.description,
         status: c.status,
-        wardenResponse: c.wardenResponse,
-        adminResponse: c.adminResponse,
+        wardenResponse: c.wardenResponse || '',
+        adminResponse: c.adminResponse || '',
         date: c.createdAt.toISOString().split('T')[0]
+      })),
+      leaveRequests: leaveRequests.map(l => ({
+        id: l._id,
+        reason: l.reason,
+        type: l.type || 'Personal',
+        startDate: l.startDate,
+        endDate: l.endDate,
+        status: l.status,
+        approvedBy: l.approvedBy || '',
+        createdAt: l.createdAt
       }))
     });
   } catch (error) {
@@ -211,8 +282,11 @@ exports.getComplaints = async (req, res) => {
     if (status && status !== 'All') filter.status = status;
     if (category && category !== 'All') filter.category = category;
 
+    const studentIds = await User.find({ role: 'student', ...getHostelSectionFilter(req.user) }).distinct('_id');
+    filter.userId = studentIds.length ? { $in: studentIds } : null;
+
     const complaints = await Complaint.find(filter)
-      .populate('userId', 'name room email department phone')
+      .populate('userId', 'name room email department phone hostelSection')
       .populate('resolvedBy', 'name')
       .sort({ createdAt: -1 });
 
@@ -223,6 +297,7 @@ exports.getComplaints = async (req, res) => {
       studentEmail: c.userId?.email || '',
       studentDepartment: c.userId?.department || 'N/A',
       studentPhone: c.userId?.phone || 'N/A',
+      hostelSection: c.userId?.hostelSection || '',
       category: c.category,
       description: c.description,
       status: c.status,
@@ -256,17 +331,24 @@ exports.updateComplaint = async (req, res) => {
       updateData.resolvedBy = req.user._id;
     }
 
+    const existingComplaint = await Complaint.findById(req.params.id).populate('userId', 'hostelSection');
+    if (!existingComplaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+    if (
+      normalizeHostelSection(req.user.hostelSection) &&
+      existingComplaint.userId?.hostelSection !== normalizeHostelSection(req.user.hostelSection)
+    ) {
+      return res.status(403).json({ error: 'Access denied for this hostel section' });
+    }
+
     const complaint = await Complaint.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
     )
-      .populate('userId', 'name room email department phone')
+      .populate('userId', 'name room email department phone hostelSection')
       .populate('resolvedBy', 'name');
-
-    if (!complaint) {
-      return res.status(404).json({ error: 'Complaint not found' });
-    }
 
     res.json({
       id: complaint._id,
@@ -275,6 +357,7 @@ exports.updateComplaint = async (req, res) => {
       studentEmail: complaint.userId?.email || '',
       studentDepartment: complaint.userId?.department || 'N/A',
       studentPhone: complaint.userId?.phone || 'N/A',
+      hostelSection: complaint.userId?.hostelSection || '',
       category: complaint.category,
       description: complaint.description,
       status: complaint.status,

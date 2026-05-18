@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 export const Navbar = ({ onMenuToggle }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const roleLabel = user?.role === "warden" && user?.hostelSection
+    ? `${user.hostelSection} warden`
+    : user?.role;
 
   const handleLogout = () => {
     logout();
@@ -33,7 +36,7 @@ export const Navbar = ({ onMenuToggle }) => {
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+              <p className="text-xs text-slate-500 capitalize">{roleLabel}</p>
             </div>
             <button
               onClick={() => navigate(`/${user?.role}/profile`)}

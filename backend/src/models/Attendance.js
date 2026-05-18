@@ -16,23 +16,23 @@ const attendanceSchema = new mongoose.Schema({
   },
   time: {
     type: String, // HH:MM format
-    required: true
+    default: '00:00'  // Optional for system-generated "On Leave" records
   },
   latitude: {
     type: Number,
-    required: true
+    default: 0  // Optional for system-generated "On Leave" records
   },
   longitude: {
     type: Number,
-    required: true
+    default: 0  // Optional for system-generated "On Leave" records
   },
   distance: {
     type: Number, // Distance from hostel in km
-    required: true
+    default: 0  // Optional for system-generated "On Leave" records
   },
   status: {
     type: String,
-    enum: ['Present', 'Late', 'Absent'],
+    enum: ['Present', 'Late', 'Absent', 'On Leave'],  // Integration: Leave Management System
     required: true
   },
   location: {

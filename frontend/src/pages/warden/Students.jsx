@@ -6,6 +6,7 @@ import { Modal } from "../../components/Modal";
 import { CardSkeleton } from "../../components/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import { api } from "../../services/api";
+import { useAuth } from "../../store/AuthContext";
 import {
   Search,
   Users,
@@ -21,10 +22,14 @@ import {
   CheckCircle,
   Clock,
   CalendarCheck,
+  Calendar,
   X,
   MessageSquare,
   TrendingUp,
-  Shield
+  Shield,
+  Building,
+  FileText,
+  Eye
 } from "lucide-react";
 
 export const WardenStudents = () => {
@@ -32,10 +37,15 @@ export const WardenStudents = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [buildingFilter, setBuildingFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentDetails, setStudentDetails] = useState(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [detailTab, setDetailTab] = useState("overview");
+  const { user } = useAuth();
   const { error } = useToast();
+  const sectionLabel = user?.hostelSection === "girls" ? "Girls Hostel" : user?.hostelSection === "boys" ? "Boys Hostel" : "Assigned Hostel";
+  const normalizedWardenSection = String(user?.hostelSection || "").trim().toLowerCase();
 
   useEffect(() => {
     fetchStudents();
@@ -54,6 +64,7 @@ export const WardenStudents = () => {
 
   const openStudentDetail = async (student) => {
     setSelectedStudent(student);
+    setDetailTab("overview");
     setIsDetailLoading(true);
     try {
       const data = await api.warden.getStudentDetails(student.id);
@@ -70,7 +81,12 @@ export const WardenStudents = () => {
     setStudentDetails(null);
   };
 
-  const filteredStudents = students.filter(s => {
+  const sectionStudents = students.filter((student) => {
+    if (!normalizedWardenSection) return true;
+    return String(student.hostelSection || "").trim().toLowerCase() === normalizedWardenSection;
+  });
+
+  const filteredStudents = sectionStudents.filter(s => {
     const matchesSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.room.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,7 +96,8 @@ export const WardenStudents = () => {
       (filter === "inside" && s.status === "Inside") ||
       (filter === "outside" && s.status === "Outside") ||
       (filter === "complaints" && s.pendingComplaints > 0);
-    return matchesSearch && matchesFilter;
+    const matchesBuilding = buildingFilter === "all" || s.building === buildingFilter;
+    return matchesSearch && matchesFilter && matchesBuilding;
   });
 
   const getAttendanceColor = (rate) => {
@@ -93,6 +110,29 @@ export const WardenStudents = () => {
     if (rate >= 85) return "bg-emerald-500";
     if (rate >= 70) return "bg-amber-500";
     return "bg-red-500";
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Present": return "bg-green-100 text-green-700";
+      case "Late": return "bg-yellow-100 text-yellow-700";
+      case "On Leave": return "bg-blue-100 text-blue-700";
+      default: return "bg-red-100 text-red-700";
+    }
+  };
+
+  const getComplaintStatusColor = (status) => {
+    switch (status) {
+      case "Resolved": return "bg-emerald-100 text-emerald-700";
+      case "In Progress": return "bg-blue-100 text-blue-700";
+      case "Rejected": return "bg-red-100 text-red-700";
+      default: return "bg-amber-100 text-amber-700";
+    }
+  };
+
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   };
 
   if (isLoading) {
@@ -117,14 +157,14 @@ export const WardenStudents = () => {
             </div>
             Student Management
           </h1>
-          <p className="text-slate-600 mt-2">View student details, attendance, and complaints</p>
+          <p className="text-slate-600 mt-2">View student details, attendance, and complaints for {sectionLabel}</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full font-medium border border-emerald-200">
-            {students.filter(s => s.status === "Inside").length} Inside
+            {sectionStudents.filter(s => s.status === "Inside").length} Inside
           </span>
           <span className="px-3 py-1.5 bg-red-50 text-red-600 rounded-full font-medium border border-red-200">
-            {students.filter(s => s.status === "Outside").length} Outside
+            {sectionStudents.filter(s => s.status === "Outside").length} Outside
           </span>
         </div>
       </div>
@@ -155,6 +195,18 @@ export const WardenStudents = () => {
                 size="sm"
               >
                 {f.label}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {["all", "A", "B", "C"].map((b) => (
+              <Button
+                key={b}
+                variant={buildingFilter === b ? "primary" : "secondary"}
+                onClick={() => setBuildingFilter(b)}
+                size="sm"
+              >
+                {b === "all" ? "All Buildings" : `Building ${b}`}
               </Button>
             ))}
           </div>
@@ -205,6 +257,11 @@ export const WardenStudents = () => {
                   <span>{student.room}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                    Building {student.building || "N/A"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Phone className="w-4 h-4 text-slate-400" />
                   <span className="truncate">{student.phone}</span>
                 </div>
@@ -250,10 +307,10 @@ export const WardenStudents = () => {
       {/* Summary */}
       <div className="grid md:grid-cols-4 gap-4">
         {[
-          { label: "Total Students", value: students.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Inside Hostel", value: students.filter(s => s.status === "Inside").length, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Outside Hostel", value: students.filter(s => s.status === "Outside").length, icon: UserX, color: "text-red-500", bg: "bg-red-50" },
-          { label: "With Complaints", value: students.filter(s => s.pendingComplaints > 0).length, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50" }
+          { label: "Total Students", value: sectionStudents.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Inside Hostel", value: sectionStudents.filter(s => s.status === "Inside").length, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Outside Hostel", value: sectionStudents.filter(s => s.status === "Outside").length, icon: UserX, color: "text-red-500", bg: "bg-red-50" },
+          { label: "With Complaints", value: sectionStudents.filter(s => s.pendingComplaints > 0).length, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50" }
         ].map((stat, idx) => (
           <Card key={idx}>
             <div className="flex items-center gap-3">
@@ -270,136 +327,184 @@ export const WardenStudents = () => {
       </div>
 
       {/* Student Detail Modal */}
-      <Modal isOpen={!!selectedStudent} onClose={closeDetail} className="max-w-2xl">
+      <Modal isOpen={!!selectedStudent} onClose={closeDetail} title={selectedStudent ? `${selectedStudent.name} — Student Profile` : ""} className="max-w-2xl">
         {isDetailLoading ? (
-          <div className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-slate-200 rounded w-1/3" />
-              <div className="h-4 bg-slate-200 rounded w-2/3" />
-              <div className="h-32 bg-slate-200 rounded" />
-            </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (<div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />))}
           </div>
         ) : studentDetails ? (
-          <div className="space-y-6">
-            {/* Student Header */}
+          <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
+            {/* Profile Header */}
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/25">
+              <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${
+                studentDetails.student.hostelSection === 'boys' ? 'from-blue-500 to-indigo-600' : 'from-pink-500 to-rose-600'
+              } flex items-center justify-center text-white font-bold text-2xl shadow-lg`}>
                 {studentDetails.student.name.charAt(0)}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">{studentDetails.student.name}</h2>
-                <p className="text-slate-500">{studentDetails.student.department} • Room {studentDetails.student.room}</p>
+                <h3 className="text-xl font-bold text-slate-900">{studentDetails.student.name}</h3>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                    studentDetails.student.hostelSection === 'boys' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-pink-50 text-pink-700 border-pink-200'
+                  }`}>{studentDetails.student.hostelSection === 'boys' ? 'Boys Hostel' : 'Girls Hostel'}</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                    Building {studentDetails.student.building || 'N/A'}
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusBadge(studentDetails.student.todayStatus)}`}>
+                    {studentDetails.student.todayStatus}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Contact Info */}
+            {/* Contact Info Grid */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <Mail className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-700 truncate">{studentDetails.student.email}</span>
-              </div>
-              <div className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <Phone className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-700">{studentDetails.student.phone}</span>
-              </div>
-              <div className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-sm text-slate-700">Parent: {studentDetails.student.parentPhone}</span>
-              </div>
-              <div className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <Home className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-700 truncate">{studentDetails.student.address}</span>
-              </div>
-            </div>
-
-            {/* Attendance Stats */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                <CalendarCheck className="w-4 h-4 text-indigo-500" />
-                Attendance Summary
-              </h3>
-              <div className="grid grid-cols-4 gap-2">
-                <div className="text-center p-3 bg-blue-50 rounded-xl border border-blue-100">
-                  <p className="text-xl font-bold text-blue-700">{studentDetails.attendance.rate}%</p>
-                  <p className="text-[10px] text-blue-600 font-medium mt-1">Rate</p>
-                </div>
-                <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                  <p className="text-xl font-bold text-emerald-700">{studentDetails.attendance.presentDays}</p>
-                  <p className="text-[10px] text-emerald-600 font-medium mt-1">Present</p>
-                </div>
-                <div className="text-center p-3 bg-amber-50 rounded-xl border border-amber-100">
-                  <p className="text-xl font-bold text-amber-700">{studentDetails.attendance.lateDays}</p>
-                  <p className="text-[10px] text-amber-600 font-medium mt-1">Late</p>
-                </div>
-                <div className="text-center p-3 bg-red-50 rounded-xl border border-red-100">
-                  <p className="text-xl font-bold text-red-600">{studentDetails.attendance.absentDays}</p>
-                  <p className="text-[10px] text-red-500 font-medium mt-1">Absent</p>
-                </div>
-              </div>
-
-              {/* Recent attendance */}
-              {studentDetails.attendance.history.length > 0 && (
-                <div className="mt-3 max-h-32 overflow-y-auto">
-                  <div className="space-y-1.5">
-                    {studentDetails.attendance.history.slice(0, 7).map((record, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
-                        <span className="text-slate-600">{record.date}</span>
-                        <span className="text-slate-500">{record.time}</span>
-                        <span className={`px-2 py-0.5 rounded-full font-semibold ${
-                          record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' :
-                          record.status === 'Late' ? 'bg-amber-100 text-amber-700' :
-                          'bg-red-100 text-red-600'
-                        }`}>{record.status}</span>
-                      </div>
-                    ))}
+              {[
+                { icon: Mail, label: "Email", value: studentDetails.student.email },
+                { icon: Phone, label: "Phone", value: studentDetails.student.phone },
+                { icon: MapPin, label: "Room", value: studentDetails.student.room },
+                { icon: Building, label: "Department", value: studentDetails.student.department },
+                { icon: Phone, label: "Parent Phone", value: studentDetails.student.parentPhone },
+                { icon: Calendar, label: "Joined", value: formatDate(studentDetails.student.createdAt) }
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <item.icon className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-slate-400 font-medium uppercase">{item.label}</p>
+                    <p className="text-sm text-slate-700 truncate">{item.value}</p>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
 
-            {/* Complaints */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-rose-500" />
-                Complaints ({studentDetails.complaints.length})
-              </h3>
-              {studentDetails.complaints.length === 0 ? (
-                <div className="text-center py-4 bg-slate-50 rounded-xl">
-                  <CheckCircle className="w-8 h-8 text-emerald-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No complaints filed</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {studentDetails.complaints.map((c) => (
-                    <div key={c.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-slate-800">{c.category}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          c.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                          c.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                          c.status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-red-100 text-red-600'
-                        }`}>{c.status}</span>
-                      </div>
-                      <p className="text-xs text-slate-600">{c.description}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{c.date}</p>
-                      {c.wardenResponse && (
-                        <div className="mt-2 p-2 bg-indigo-50 rounded-lg border border-indigo-100">
-                          <p className="text-[10px] font-semibold text-indigo-600 mb-0.5">Warden Response</p>
-                          <p className="text-xs text-indigo-700">{c.wardenResponse}</p>
-                        </div>
-                      )}
+            {/* Tabs */}
+            <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+              {[
+                { key: "overview", label: "Overview", icon: TrendingUp },
+                { key: "attendance", label: "Attendance", icon: UserCheck },
+                { key: "complaints", label: "Complaints", icon: MessageSquare },
+                { key: "leaves", label: "Leaves", icon: FileText }
+              ].map((tab) => (
+                <button key={tab.key} onClick={() => setDetailTab(tab.key)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    detailTab === tab.key ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}>
+                  <tab.icon className="w-4 h-4" />{tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Overview Tab */}
+            {detailTab === "overview" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Attendance", value: `${studentDetails.attendance.rate}%`, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
+                    { label: "Present Days", value: studentDetails.attendance.presentDays, icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+                    { label: "Absent Days", value: studentDetails.attendance.absentDays, icon: UserX, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" }
+                  ].map((s, i) => (
+                    <div key={i} className={`text-center p-4 ${s.bg} rounded-xl border ${s.border}`}>
+                      <s.icon className={`w-5 h-5 ${s.color} mx-auto mb-1.5`} />
+                      <p className="text-2xl font-bold text-slate-800">{s.value}</p>
+                      <p className={`text-xs ${s.color} font-medium mt-0.5`}>{s.label}</p>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-600 font-medium">Attendance Rate</span>
+                    <span className="font-bold text-slate-800">{studentDetails.attendance.rate}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-2.5 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-700" style={{ width: `${studentDetails.attendance.rate}%` }} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Late Days", value: studentDetails.attendance.lateDays, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+                    { label: "On Leave", value: studentDetails.attendance.onLeaveDays || 0, icon: FileText, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+                    { label: "Complaints", value: studentDetails.complaints.length, icon: MessageSquare, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
+                    { label: "Leave Requests", value: studentDetails.leaveRequests?.length || 0, icon: Calendar, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100" }
+                  ].map((item, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${item.bg} border ${item.border}`}>
+                      <item.icon className={`w-5 h-5 ${item.color} flex-shrink-0`} />
+                      <div><p className="text-lg font-bold text-slate-800">{item.value}</p><p className={`text-xs font-medium ${item.color}`}>{item.label}</p></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            <div className="pt-2">
-              <Button variant="secondary" onClick={closeDetail} className="w-full">
-                Close
-              </Button>
-            </div>
+            {/* Attendance Tab */}
+            {detailTab === "attendance" && (
+              <div className="space-y-3">
+                {studentDetails.attendance.history.length === 0 ? (
+                  <div className="text-center py-10">
+                    <UserCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">No attendance records yet</p>
+                  </div>
+                ) : studentDetails.attendance.history.map((record, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${record.status === 'Present' ? 'bg-green-100' : record.status === 'Late' ? 'bg-amber-100' : record.status === 'On Leave' ? 'bg-blue-100' : 'bg-red-100'}`}>
+                        {record.status === 'Present' ? <UserCheck className="w-4 h-4 text-green-600" /> : record.status === 'Late' ? <Clock className="w-4 h-4 text-amber-600" /> : <UserX className="w-4 h-4 text-red-600" />}
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800 text-sm">{record.date}</p>
+                        <p className="text-xs text-slate-500">{record.time} • {record.location}</p>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadge(record.status)}`}>{record.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Complaints Tab */}
+            {detailTab === "complaints" && (
+              <div className="space-y-3">
+                {studentDetails.complaints.length === 0 ? (
+                  <div className="text-center py-10">
+                    <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">No complaints filed</p>
+                  </div>
+                ) : studentDetails.complaints.map((c) => (
+                  <div key={c.id} className="p-4 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2"><span className="text-xs text-slate-400">{c.category}</span><span className="text-xs text-slate-400">• {c.date}</span></div>
+                        <p className="text-sm text-slate-700 mt-1">{c.description}</p>
+                        {c.wardenResponse && <div className="mt-2 p-2 bg-violet-50 rounded-lg border border-violet-100"><p className="text-xs text-violet-600 font-medium">Warden: {c.wardenResponse}</p></div>}
+                        {c.adminResponse && <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100"><p className="text-xs text-blue-600 font-medium">Admin: {c.adminResponse}</p></div>}
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getComplaintStatusColor(c.status)}`}>{c.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Leaves Tab */}
+            {detailTab === "leaves" && (
+              <div className="space-y-3">
+                {(!studentDetails.leaveRequests || studentDetails.leaveRequests.length === 0) ? (
+                  <div className="text-center py-10">
+                    <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">No leave requests</p>
+                  </div>
+                ) : studentDetails.leaveRequests.map((l) => (
+                  <div key={l.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-800 text-sm">{l.reason}</p>
+                      <p className="text-xs text-slate-500 mt-1">{formatDate(l.startDate)} → {formatDate(l.endDate)} • {l.type}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      l.status === 'Approved' ? 'bg-green-100 text-green-700' : l.status === 'Rejected' ? 'bg-red-100 text-red-700' : l.status === 'Cancelled' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'
+                    }`}>{l.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : null}
       </Modal>

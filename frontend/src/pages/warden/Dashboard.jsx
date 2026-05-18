@@ -17,12 +17,15 @@ import {
   UserX
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../store/AuthContext";
 
 export const WardenDashboard = () => {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const { error } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const sectionLabel = user?.hostelSection === "girls" ? "Girls Hostel" : user?.hostelSection === "boys" ? "Boys Hostel" : "Assigned Hostel";
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -129,7 +132,7 @@ export const WardenDashboard = () => {
             </div>
             Warden Dashboard
           </h1>
-          <p className="text-slate-600 mt-2">Monitor students and manage complaints</p>
+          <p className="text-slate-600 mt-2">Monitor students and manage complaints for {sectionLabel}</p>
         </div>
       </div>
 

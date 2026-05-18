@@ -122,6 +122,28 @@ export const api = {
         headers: authHeaders(),
       });
       return handleResponse(response);
+    },
+    // Leave Management APIs
+    getLeaves: async () => {
+      const response = await fetch(`${BASE_URL}/student/leaves`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    applyLeave: async (data) => {
+      const response = await fetch(`${BASE_URL}/student/leaves`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    cancelLeave: async (id) => {
+      const response = await fetch(`${BASE_URL}/student/leaves/${id}/cancel`, {
+        method: 'PUT',
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
     }
   },
   
@@ -135,6 +157,12 @@ export const api = {
     },
     getStudents: async () => {
       const response = await fetch(`${BASE_URL}/admin/students`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    getStudentDetails: async (id) => {
+      const response = await fetch(`${BASE_URL}/admin/students/${id}`, {
         headers: authHeaders(),
       });
       return handleResponse(response);
@@ -214,6 +242,18 @@ export const api = {
         headers: authHeaders(),
       });
       return handleResponse(response);
+    },
+    getWardens: async () => {
+      const response = await fetch(`${BASE_URL}/admin/wardens`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    getWardenDetails: async (id) => {
+      const response = await fetch(`${BASE_URL}/admin/wardens/${id}`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
     }
   },
 
@@ -277,6 +317,60 @@ export const api = {
     deleteNotice: async (id) => {
       const response = await fetch(`${BASE_URL}/warden/notices/${id}`, {
         method: 'DELETE',
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    // Leave Management APIs
+    getPendingLeaves: async () => {
+      const response = await fetch(`${BASE_URL}/warden/leaves`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    getAllLeaves: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      const response = await fetch(`${BASE_URL}/warden/leaves/all${query ? `?${query}` : ''}`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    approveLeave: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/warden/leaves/${id}/approve`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    rejectLeave: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/warden/leaves/${id}/reject`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    }
+  },
+
+  // Device Info APIs
+  device: {
+    storeDeviceInfo: async (data) => {
+      const response = await fetch(`${BASE_URL}/device/info`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    getAllDeviceInfo: async () => {
+      const response = await fetch(`${BASE_URL}/device/info`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    getUserDeviceInfo: async (userId) => {
+      const response = await fetch(`${BASE_URL}/device/info/${userId}`, {
         headers: authHeaders(),
       });
       return handleResponse(response);

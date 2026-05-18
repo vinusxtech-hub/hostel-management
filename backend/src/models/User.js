@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'admin', 'warden'],
     default: 'student'
   },
+  hostelSection: {
+    type: String,
+    enum: ['boys', 'girls', ''],
+    default: ''
+  },
+  building: {
+    type: String,
+    enum: ['A', 'B', 'C', ''],
+    default: ''
+  },
   room: {
     type: String,
     trim: true,

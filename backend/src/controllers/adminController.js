@@ -1,6 +1,14 @@
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Complaint = require('../models/Complaint');
+const Notice = require('../models/Notice');
+
+const normalizeHostelSection = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['boys', 'boy', 'male', 'm'].includes(normalized)) return 'boys';
+  if (['girls', 'girl', 'female', 'f'].includes(normalized)) return 'girls';
+  return '';
+};
 
 // @desc    Get dashboard stats
 // @route   GET /api/admin/stats
@@ -82,6 +90,8 @@ exports.getStudents = async (req, res) => {
         id: student._id,
         name: student.name,
         email: student.email,
+        hostelSection: student.hostelSection || '',
+        building: student.building || '',
         room: student.room || 'N/A',
         department: student.department || 'N/A',
         phone: student.phone,
@@ -96,11 +106,112 @@ exports.getStudents = async (req, res) => {
   }
 };
 
+// @desc    Get single student details
+// @route   GET /api/admin/students/:id
+exports.getStudentDetails = async (req, res) => {
+  try {
+    const student = await User.findById(req.params.id);
+    if (!student || student.role !== 'student') {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Get attendance history (last 30 days)
+    const attendanceHistory = await Attendance.find({ userId: student._id })
+      .sort({ date: -1 })
+      .limit(30);
+
+    // Get all complaints
+    const complaints = await Complaint.find({ userId: student._id })
+      .populate('resolvedBy', 'name')
+      .sort({ createdAt: -1 });
+
+    // Attendance stats
+    const totalRecords = await Attendance.countDocuments({ userId: student._id });
+    const presentRecords = await Attendance.countDocuments({
+      userId: student._id,
+      status: { $in: ['Present', 'Late'] }
+    });
+    const lateRecords = await Attendance.countDocuments({ userId: student._id, status: 'Late' });
+    const absentRecords = await Attendance.countDocuments({ userId: student._id, status: 'Absent' });
+    const onLeaveRecords = await Attendance.countDocuments({ userId: student._id, status: 'On Leave' });
+    const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+
+    // Leave requests
+    let leaveRequests = [];
+    try {
+      const LeaveRequest = require('../models/LeaveRequest');
+      leaveRequests = await LeaveRequest.find({ studentId: student._id })
+        .sort({ createdAt: -1 })
+        .limit(20);
+    } catch (e) {
+      // LeaveRequest model may not exist
+    }
+
+    // Today's status
+    const today = new Date().toISOString().split('T')[0];
+    const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
+
+    res.json({
+      student: {
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        hostelSection: student.hostelSection || '',
+        building: student.building || '',
+        room: student.room || 'N/A',
+        department: student.department || 'N/A',
+        phone: student.phone || 'N/A',
+        parentPhone: student.parentPhone || 'N/A',
+        address: student.address || 'N/A',
+        createdAt: student.createdAt,
+        todayStatus: todayRecord ? todayRecord.status : 'Absent'
+      },
+      attendance: {
+        rate,
+        totalDays: totalRecords,
+        presentDays: presentRecords,
+        lateDays: lateRecords,
+        absentDays: absentRecords,
+        onLeaveDays: onLeaveRecords,
+        history: attendanceHistory.map(a => ({
+          date: a.date,
+          time: a.time,
+          status: a.status,
+          location: a.location
+        }))
+      },
+      complaints: complaints.map(c => ({
+        id: c._id,
+        category: c.category,
+        description: c.description,
+        status: c.status,
+        wardenResponse: c.wardenResponse || '',
+        adminResponse: c.adminResponse || '',
+        resolvedByName: c.resolvedBy?.name || '',
+        date: c.createdAt.toISOString().split('T')[0]
+      })),
+      leaveRequests: leaveRequests.map(l => ({
+        id: l._id,
+        reason: l.reason,
+        type: l.type || 'Personal',
+        startDate: l.startDate,
+        endDate: l.endDate,
+        status: l.status,
+        approvedBy: l.approvedBy || '',
+        createdAt: l.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Admin student details error:', error);
+    res.status(500).json({ error: 'Failed to fetch student details' });
+  }
+};
+
 // @desc    Add a student
 // @route   POST /api/admin/students
 exports.addStudent = async (req, res) => {
   try {
-    const { name, email, room, department, phone, password } = req.body;
+    const { name, email, room, department, phone, password, hostelSection, building } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' });
@@ -111,11 +222,16 @@ exports.addStudent = async (req, res) => {
       return res.status(400).json({ error: 'Email already in use' });
     }
 
+    const normalizedSection = normalizeHostelSection(hostelSection);
+    const normalizedBuilding = building || 'A';
+
     const student = await User.create({
       name,
       email,
       password: password || 'password123',
       role: 'student',
+      hostelSection: normalizedSection,
+      building: normalizedBuilding,
       room: room || '',
       department: department || '',
       phone: phone || ''
@@ -125,6 +241,8 @@ exports.addStudent = async (req, res) => {
       id: student._id,
       name: student.name,
       email: student.email,
+      hostelSection: student.hostelSection || '',
+      building: student.building || '',
       room: student.room,
       department: student.department,
       attendanceRate: '100%',
@@ -200,11 +318,16 @@ exports.bulkImportStudents = async (req, res) => {
           continue;
         }
 
+        const importedSection = normalizeHostelSection(row.hostelsection || row.section || row.gender);
+        const importedBuilding = row.building || 'A';
+
         const student = await User.create({
           name,
           email: email.toLowerCase(),
           password: row.password || 'password123',
           role: 'student',
+          hostelSection: importedSection,
+          building: importedBuilding,
           room: row.room || '',
           department: row.department || '',
           phone: row.phone || '',
@@ -436,3 +559,183 @@ exports.updateComplaint = async (req, res) => {
     res.status(500).json({ error: 'Failed to update complaint' });
   }
 };
+
+// @desc    Get all wardens with work stats
+// @route   GET /api/admin/wardens
+exports.getWardens = async (req, res) => {
+  try {
+    const wardens = await User.find({ role: 'warden' }).sort({ name: 1 });
+
+    const result = await Promise.all(wardens.map(async (warden) => {
+      // Count students in their hostel section
+      const sectionFilter = warden.hostelSection ? { hostelSection: warden.hostelSection } : {};
+      const studentCount = await User.countDocuments({ role: 'student', ...sectionFilter });
+
+      // Count complaints resolved/handled by this warden
+      const complaintsResolved = await Complaint.countDocuments({ resolvedBy: warden._id, status: 'Resolved' });
+      const complaintsRejected = await Complaint.countDocuments({ resolvedBy: warden._id, status: 'Rejected' });
+      const complaintsInProgress = await Complaint.countDocuments({ resolvedBy: warden._id, status: 'In Progress' });
+      const totalHandled = complaintsResolved + complaintsRejected + complaintsInProgress;
+
+      // Count section complaints (all complaints from students in their section)
+      const sectionStudentIds = await User.find({ role: 'student', ...sectionFilter }).distinct('_id');
+      const sectionComplaints = sectionStudentIds.length
+        ? await Complaint.countDocuments({ userId: { $in: sectionStudentIds } })
+        : 0;
+      const sectionPendingComplaints = sectionStudentIds.length
+        ? await Complaint.countDocuments({ userId: { $in: sectionStudentIds }, status: 'Pending' })
+        : 0;
+
+      // Count notices created by this warden
+      const noticeCount = await Notice.countDocuments({ createdBy: warden._id });
+
+      // Last activity — most recent complaint update by this warden
+      const lastHandled = await Complaint.findOne({ resolvedBy: warden._id })
+        .sort({ updatedAt: -1 })
+        .select('updatedAt');
+
+      // Determine buildings managed
+      const buildings = warden.hostelSection ? ['A', 'B', 'C'] : [];
+
+      // Per-building student counts (filtered by warden's section)
+      const buildingCounts = {};
+      for (const b of buildings) {
+        buildingCounts[b] = await User.countDocuments({ role: 'student', building: b, ...sectionFilter });
+      }
+
+      return {
+        id: warden._id,
+        name: warden.name,
+        email: warden.email,
+        phone: warden.phone || 'N/A',
+        hostelSection: warden.hostelSection || '',
+        department: warden.department || '',
+        joinedAt: warden.createdAt,
+        buildings,
+        buildingCounts,
+        studentCount,
+        complaintsResolved,
+        complaintsRejected,
+        complaintsInProgress,
+        totalHandled,
+        sectionComplaints,
+        sectionPendingComplaints,
+        noticeCount,
+        lastActivity: lastHandled?.updatedAt || warden.updatedAt
+      };
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Admin get wardens error:', error);
+    res.status(500).json({ error: 'Failed to fetch wardens' });
+  }
+};
+
+// @desc    Get single warden details with work history
+// @route   GET /api/admin/wardens/:id
+exports.getWardenDetails = async (req, res) => {
+  try {
+    const warden = await User.findById(req.params.id);
+    if (!warden || warden.role !== 'warden') {
+      return res.status(404).json({ error: 'Warden not found' });
+    }
+
+    // Profile
+    const profile = {
+      id: warden._id,
+      name: warden.name,
+      email: warden.email,
+      phone: warden.phone || 'N/A',
+      hostelSection: warden.hostelSection || '',
+      department: warden.department || '',
+      address: warden.address || '',
+      joinedAt: warden.createdAt
+    };
+
+    // Section stats
+    const sectionFilter = warden.hostelSection ? { hostelSection: warden.hostelSection } : {};
+    const studentCount = await User.countDocuments({ role: 'student', ...sectionFilter });
+    const sectionStudentIds = await User.find({ role: 'student', ...sectionFilter }).distinct('_id');
+
+    // Complaint stats
+    const complaintsResolved = await Complaint.countDocuments({ resolvedBy: warden._id, status: 'Resolved' });
+    const complaintsRejected = await Complaint.countDocuments({ resolvedBy: warden._id, status: 'Rejected' });
+    const complaintsInProgress = await Complaint.countDocuments({ resolvedBy: warden._id, status: 'In Progress' });
+    const totalHandled = complaintsResolved + complaintsRejected + complaintsInProgress;
+
+    const sectionTotalComplaints = sectionStudentIds.length
+      ? await Complaint.countDocuments({ userId: { $in: sectionStudentIds } })
+      : 0;
+    const sectionPendingComplaints = sectionStudentIds.length
+      ? await Complaint.countDocuments({ userId: { $in: sectionStudentIds }, status: 'Pending' })
+      : 0;
+
+    const resolutionRate = sectionTotalComplaints > 0
+      ? Math.round((complaintsResolved / sectionTotalComplaints) * 100)
+      : 0;
+
+    // Recent complaints handled by this warden (last 20)
+    const recentComplaints = await Complaint.find({ resolvedBy: warden._id })
+      .populate('userId', 'name room email hostelSection')
+      .sort({ updatedAt: -1 })
+      .limit(20);
+
+    const formattedComplaints = recentComplaints.map(c => ({
+      id: c._id,
+      studentName: c.userId?.name || 'Unknown',
+      studentRoom: c.userId?.room || 'N/A',
+      category: c.category,
+      description: c.description.substring(0, 120) + (c.description.length > 120 ? '...' : ''),
+      status: c.status,
+      wardenResponse: c.wardenResponse || '',
+      date: c.createdAt.toISOString().split('T')[0],
+      handledAt: c.updatedAt.toISOString().split('T')[0]
+    }));
+
+    // Notices created by this warden
+    const notices = await Notice.find({ createdBy: warden._id })
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    const formattedNotices = notices.map(n => ({
+      id: n._id,
+      title: n.title,
+      category: n.category,
+      priority: n.priority,
+      isPinned: n.isPinned,
+      date: n.createdAt.toISOString().split('T')[0]
+    }));
+
+    // Today's section attendance
+    const today = new Date().toISOString().split('T')[0];
+    const todayRecords = await Attendance.find({ date: today, userId: { $in: sectionStudentIds } });
+    const presentToday = todayRecords.filter(r => r.status === 'Present').length;
+    const lateToday = todayRecords.filter(r => r.status === 'Late').length;
+    const absentToday = studentCount - presentToday - lateToday;
+
+    res.json({
+      profile,
+      stats: {
+        studentCount,
+        complaintsResolved,
+        complaintsRejected,
+        complaintsInProgress,
+        totalHandled,
+        sectionTotalComplaints,
+        sectionPendingComplaints,
+        resolutionRate,
+        noticeCount: notices.length,
+        presentToday,
+        lateToday,
+        absentToday: Math.max(0, absentToday)
+      },
+      recentComplaints: formattedComplaints,
+      notices: formattedNotices
+    });
+  } catch (error) {
+    console.error('Warden details error:', error);
+    res.status(500).json({ error: 'Failed to fetch warden details' });
+  }
+};
+

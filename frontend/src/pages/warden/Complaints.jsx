@@ -4,6 +4,7 @@ import { Button } from "../../components/Button";
 import { CardSkeleton } from "../../components/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import { api } from "../../services/api";
+import { useAuth } from "../../store/AuthContext";
 import {
   MessageSquare,
   AlertCircle,
@@ -32,6 +33,8 @@ export const WardenComplaints = () => {
   const [responseText, setResponseText] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const { success, error } = useToast();
+  const { user } = useAuth();
+  const sectionLabel = user?.hostelSection === "girls" ? "Girls Hostel" : user?.hostelSection === "boys" ? "Boys Hostel" : "Assigned Hostel";
 
   useEffect(() => {
     fetchComplaints();
@@ -206,7 +209,7 @@ export const WardenComplaints = () => {
             </div>
             Manage Complaints
           </h1>
-          <p className="text-slate-600 mt-2">Review, respond to, and resolve student complaints</p>
+          <p className="text-slate-600 mt-2">Review, respond to, and resolve student complaints for {sectionLabel}</p>
         </div>
       </div>
 

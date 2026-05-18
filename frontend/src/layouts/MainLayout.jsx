@@ -13,7 +13,8 @@ import {
   X,
   Users,
   Megaphone,
-  Shield
+  Shield,
+  CalendarOff
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
@@ -22,6 +23,7 @@ const studentNavigation = [
   { name: 'Attendance', href: '/attendance', icon: CalendarCheck },
   { name: 'Activity', href: '/activity', icon: History },
   { name: 'Complaints', href: '/complaints', icon: MessageSquare },
+  { name: 'Leaves', href: '/leaves', icon: CalendarOff },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Notices', href: '/notices', icon: Megaphone },
   { name: 'Profile', href: '/profile', icon: User },
@@ -33,12 +35,14 @@ const adminNavigation = [
   { name: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { name: 'Notices', href: '/admin/notices', icon: Megaphone },
+  { name: 'Wardens', href: '/admin/wardens', icon: Shield },
 ];
 
 const wardenNavigation = [
   { name: 'Dashboard', href: '/warden/dashboard', icon: LayoutDashboard },
   { name: 'Students', href: '/warden/students', icon: Users },
   { name: 'Complaints', href: '/warden/complaints', icon: MessageSquare },
+  { name: 'Leaves', href: '/warden/leaves', icon: CalendarOff },
   { name: 'Notices', href: '/warden/notices', icon: Megaphone },
   { name: 'Profile', href: '/warden/profile', icon: User },
 ];

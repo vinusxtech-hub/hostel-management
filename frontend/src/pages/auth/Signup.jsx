@@ -17,6 +17,7 @@ export const Signup = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    hostelSection: "",
     room: "",
     phone: "",
     department: ""
@@ -65,6 +66,7 @@ export const Signup = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
+        hostelSection: formData.hostelSection,
         room: formData.room,
         phone: formData.phone,
         department: formData.department
@@ -159,7 +161,23 @@ export const Signup = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div>
+          <label htmlFor="hostelSection" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Hostel Section
+          </label>
+          <select
+            id="hostelSection"
+            name="hostelSection"
+            value={formData.hostelSection}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 bg-white text-sm"
+          >
+            <option value="">Select</option>
+            <option value="boys">Boys Hostel</option>
+            <option value="girls">Girls Hostel</option>
+          </select>
+        </div>
         <div>
           <label htmlFor="room" className="block text-sm font-medium text-slate-700 mb-1.5">
             Room Number

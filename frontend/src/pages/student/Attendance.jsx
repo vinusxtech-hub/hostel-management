@@ -6,7 +6,7 @@ import { Modal } from "../../components/Modal";
 import { useToast } from "../../hooks/useToast";
 import { Loader } from "../../components/Loader";
 import { api } from "../../services/api";
-import { CheckCircle, Clock, MapPin } from "lucide-react";
+import { CheckCircle, Clock } from "lucide-react";
 
 export const Attendance = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +22,7 @@ export const Attendance = () => {
         const data = await api.student.getSettings();
         setSettings(data);
       } catch (err) {
-        console.error('Failed to load settings:', err);
+        console.error("Failed to load settings:", err);
       }
     };
     loadSettings();
@@ -65,7 +65,6 @@ export const Attendance = () => {
   return (
     <>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Attendance</h1>
@@ -73,7 +72,6 @@ export const Attendance = () => {
           </div>
         </div>
 
-        {/* Current Status Card */}
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">Today's Status</h2>
@@ -81,12 +79,11 @@ export const Attendance = () => {
               {new Date().toLocaleDateString()}
             </span>
           </div>
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             {[
-              { label: "Check-in Time", value: settings?.checkInTime ?? "—" },
-              { label: "Cutoff Time", value: settings?.cutoffTime ?? "—" },
-              { label: "Status", value: settings?.status ?? "—" },
-              { label: "Location Required", value: settings?.locationRequired ?? "—" }
+              { label: "Check-in Time", value: settings?.checkInTime ?? "-" },
+              { label: "Cutoff Time", value: settings?.cutoffTime ?? "-" },
+              { label: "Status", value: settings?.status ?? "-" }
             ].map((item, idx) => (
               <div key={idx} className="p-3 bg-slate-50 rounded-lg">
                 <p className="text-xs text-slate-600 font-medium">{item.label}</p>
@@ -96,7 +93,6 @@ export const Attendance = () => {
           </div>
         </Card>
 
-        {/* Attendance History */}
         <Card>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-900">Attendance History</h2>
@@ -119,7 +115,6 @@ export const Attendance = () => {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Date</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Status</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Time</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Location</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -127,18 +122,14 @@ export const Attendance = () => {
                     <tr key={record.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-4 px-4 text-sm text-slate-900">{record.date}</td>
                       <td className="py-4 px-4">
-                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(record.status)}`}>
+                        <span
+                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(record.status)}`}
+                        >
                           {getStatusIcon(record.status)}
                           {record.status}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-900">{record.time}</td>
-                      <td className="py-4 px-4 text-sm">
-                        <span className="inline-flex items-center gap-1 text-slate-600">
-                          <MapPin className="w-4 h-4" />
-                          {record.type}
-                        </span>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

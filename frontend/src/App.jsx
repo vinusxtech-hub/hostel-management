@@ -23,6 +23,7 @@ import { Complaints } from "./pages/student/Complaints";
 import { Reports as StudentReports } from "./pages/student/Reports";
 import { Profile } from "./pages/student/Profile";
 import { Notices as StudentNotices } from "./pages/student/Notices";
+import { LeaveRequest } from "./pages/student/LeaveRequest"; 
 
 // Admin Pages
 import { AdminDashboard } from "./pages/admin/Dashboard";
@@ -30,12 +31,14 @@ import { AdminStudents } from "./pages/admin/Students";
 import { Attendance as AdminAttendance } from "./pages/admin/Attendance";
 import { AdminReports } from "./pages/admin/Reports";
 import { AdminNotices } from "./pages/admin/Notices";
+import { AdminWardens } from "./pages/admin/Wardens";
 
 // Warden Pages
 import { WardenDashboard } from "./pages/warden/Dashboard";
 import { WardenStudents } from "./pages/warden/Students";
 import { WardenComplaints } from "./pages/warden/Complaints";
 import { WardenNotices } from "./pages/warden/Notices";
+import { WardenLeaves } from "./pages/warden/Leaves";  
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -68,12 +71,14 @@ function AppContent() {
 
         {/* Student Routes */}
         <Route path="/" element={<ProtectedRoute requiredRole="student"><MainLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="activity" element={<Activity />} />
           <Route path="complaints" element={<Complaints />} />
           <Route path="reports" element={<StudentReports />} />
           <Route path="notices" element={<StudentNotices />} />
+          <Route path="leaves" element={<LeaveRequest />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
@@ -84,6 +89,7 @@ function AppContent() {
           <Route path="attendance" element={<AdminAttendance />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="notices" element={<AdminNotices />} />
+          <Route path="wardens" element={<AdminWardens />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
@@ -93,11 +99,10 @@ function AppContent() {
           <Route path="students" element={<WardenStudents />} />
           <Route path="complaints" element={<WardenComplaints />} />
           <Route path="notices" element={<WardenNotices />} />
+          <Route path="leaves" element={<WardenLeaves />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        {/* Default Routes */}
-        <Route path="/" element={<Navigate to={user ? (user?.role === "admin" ? "/admin/dashboard" : user?.role === "warden" ? "/warden/dashboard" : "/dashboard") : "/login"} />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <ToastContainer toasts={toasts} onRemove={removeToast} />

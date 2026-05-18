@@ -4,6 +4,7 @@ import { Button } from "../../components/Button";
 import { useToast } from "../../hooks/useToast";
 import { CardSkeleton } from "../../components/Skeleton";
 import { MapView } from "../../components/MapView";
+import { Modal } from "../../components/Modal";
 import { useGeolocation } from "../../hooks/useGeolocation";
 import { api } from "../../services/api";
 import { MapPin, Clock, CheckCircle, AlertCircle, MapPinOff, RefreshCw, Timer, Lock } from "lucide-react";
@@ -33,6 +34,7 @@ export const Dashboard = () => {
   const [isMarkingAttendance, setIsMarkingAttendance] = useState(false);
   const [settings, setSettings] = useState(null);
   const [timeInfo, setTimeInfo] = useState({ isOpen: false, countdown: 0, progress: 0 });
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const { location, error: geoError, isLoading: geoLoading, refreshLocation } = useGeolocation();
   const { success, error } = useToast();
 
@@ -117,6 +119,14 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [computeTimeInfo]);
 
+  useEffect(() => {
+    if (geoError) {
+      setShowLocationPrompt(true);
+    } else {
+      setShowLocationPrompt(false);
+    }
+  }, [geoError]);
+
   const handleMarkAttendance = async () => {
     if (!location) {
       error("Location not available");
@@ -155,6 +165,43 @@ export const Dashboard = () => {
 
   return (
     <div className="animate-fade-in space-y-6">
+      <Modal
+        isOpen={showLocationPrompt && !!geoError}
+        onClose={() => setShowLocationPrompt(false)}
+        title="Turn On Location"
+        className="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-full bg-amber-100 p-2">
+              <MapPinOff className="h-5 w-5 text-amber-700" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Location is required to use student attendance.
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                Please turn on your device location and allow browser access, then try again.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+            {geoError}
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowLocationPrompt(false)}>
+              Not Now
+            </Button>
+            <Button onClick={refreshLocation}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Header */}
       <div className="animate-slide-in-down">
         <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600 tracking-tight">

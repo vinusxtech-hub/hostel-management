@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { api } from "../services/api";
+import { UAParser } from "ua-parser-js";
 
 const AuthContext = createContext();
 
@@ -9,6 +10,26 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+// Collect device info using ua-parser-js and send to backend
+const sendDeviceInfo = async () => {
+  try {
+    const parser = new UAParser();
+    const result = parser.getResult();
+
+    const deviceData = {
+      deviceModel: result.device.model || 'Unknown',
+      deviceType: result.device.type || 'desktop',
+      osName: result.os.name || 'Unknown',
+      osVersion: result.os.version || 'Unknown'
+    };
+
+    await api.device.storeDeviceInfo(deviceData);
+  } catch (err) {
+    // Silently fail — device tracking should never block login
+    console.warn('Device info collection failed:', err.message);
+  }
 };
 
 export const AuthProvider = ({ children }) => {
@@ -23,6 +44,8 @@ export const AuthProvider = ({ children }) => {
         try {
           const data = await api.auth.getMe();
           setUser(data.user);
+          // Send device info on app reload with existing session
+          sendDeviceInfo();
         } catch (err) {
           // Token expired or invalid
           localStorage.removeItem("hostel_token");
@@ -39,6 +62,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("hostel_token", data.token);
     localStorage.setItem("hostel_user", JSON.stringify(data.user));
     setUser(data.user);
+    // Send device info after successful login
+    sendDeviceInfo();
     return data.user;
   };
 
@@ -47,6 +72,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("hostel_token", data.token);
     localStorage.setItem("hostel_user", JSON.stringify(data.user));
     setUser(data.user);
+    // Send device info after successful registration
+    sendDeviceInfo();
     return data.user;
   };
 

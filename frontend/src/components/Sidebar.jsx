@@ -10,6 +10,8 @@ import {
   Megaphone,
   MessageSquare,
   User,
+  Shield,
+  CalendarOff,
   X
 } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -19,6 +21,7 @@ const studentLinks = [
   { icon: CheckSquare, label: "Attendance", path: "/attendance" },
   { icon: Clock, label: "Activity", path: "/activity" },
   { icon: AlertCircle, label: "Complaints", path: "/complaints" },
+  { icon: CalendarOff, label: "Leaves", path: "/leaves" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Megaphone, label: "Notices", path: "/notices" }
 ];
@@ -28,13 +31,15 @@ const adminLinks = [
   { icon: Users, label: "Students", path: "/admin/students" },
   { icon: CheckSquare, label: "Attendance", path: "/admin/attendance" },
   { icon: BarChart3, label: "Reports", path: "/admin/reports" },
-  { icon: Megaphone, label: "Notices", path: "/admin/notices" }
+  { icon: Megaphone, label: "Notices", path: "/admin/notices" },
+  { icon: Shield, label: "Wardens", path: "/admin/wardens" }
 ];
 
 const wardenLinks = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/warden/dashboard" },
   { icon: Users, label: "Students", path: "/warden/students" },
   { icon: MessageSquare, label: "Complaints", path: "/warden/complaints" },
+  { icon: CalendarOff, label: "Leaves", path: "/warden/leaves" },
   { icon: Megaphone, label: "Notices", path: "/warden/notices" },
   { icon: User, label: "Profile", path: "/warden/profile" }
 ];
