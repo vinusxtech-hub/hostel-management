@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const complaintSchema = new mongoose.Schema({
+const resolutionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -38,4 +38,4 @@ const complaintSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('Complaint', complaintSchema);
+module.exports = mongoose.model('Resolution', resolutionSchema);

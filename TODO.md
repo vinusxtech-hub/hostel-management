@@ -8,7 +8,7 @@
 ### 2. Fix syntax in Attendance.jsx ✅
 - File already clean, no changes needed.
 
-### 3. Fix frontend/src/pages/student/Complaints.jsx ✅
+### 3. Fix frontend/src/pages/student/Resolutions.jsx ✅
 - Fixed JSX structure and div mismatches.
 
 ### 4. Fix frontend/src/pages/admin/Dashboard.jsx ✅

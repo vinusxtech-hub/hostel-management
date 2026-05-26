@@ -70,7 +70,7 @@ const ensureDefaultWardens = async () => {
 const autoSeed = async () => {
   const User = require('./models/User');
   const Attendance = require('./models/Attendance');
-  const Complaint = require('./models/Complaint');
+  const Resolution = require('./models/Resolution');
   const Notice = require('./models/Notice');
   const LeaveRequest = require('./models/LeaveRequest');  // Integration: Leave Management System
 
@@ -154,8 +154,8 @@ const autoSeed = async () => {
   }
   await Attendance.insertMany(attendanceRecords);
 
-  // Create complaints
-  await Complaint.create([
+  // Create resolutions
+  await Resolution.create([
     { userId: students[0]._id, category: 'Maintenance', description: 'Fan is not working in room A-101', status: 'Pending' },
     { userId: students[0]._id, category: 'Cleanliness', description: 'Washroom needs cleaning on 2nd floor', status: 'Resolved' },
     { userId: students[1]._id, category: 'Internet/Wi-Fi', description: 'Wi-Fi signal very weak in B block', status: 'In Progress' },
@@ -198,7 +198,7 @@ const autoSeed = async () => {
     }
   ]);
 
-  console.log(`Seeded: 1 admin, 2 wardens, ${students.length} students, ${attendanceRecords.length} attendance records, 6 complaints, 3 leave requests`);
+  console.log(`Seeded: 1 admin, 2 wardens, ${students.length} students, ${attendanceRecords.length} attendance records, 6 resolutions, 3 leave requests`);
 
     // Seed notices
     const futureDate = new Date();

@@ -20,7 +20,7 @@ const studentLinks = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CheckSquare, label: "Attendance", path: "/attendance" },
   { icon: Clock, label: "Activity", path: "/activity" },
-  { icon: AlertCircle, label: "Complaints", path: "/complaints" },
+  { icon: AlertCircle, label: "Resolutions", path: "/resolutions" },
   { icon: CalendarOff, label: "Leaves", path: "/leaves" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Megaphone, label: "Notices", path: "/notices" }
@@ -38,7 +38,7 @@ const adminLinks = [
 const wardenLinks = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/warden/dashboard" },
   { icon: Users, label: "Students", path: "/warden/students" },
-  { icon: MessageSquare, label: "Complaints", path: "/warden/complaints" },
+  { icon: MessageSquare, label: "Resolutions", path: "/warden/resolutions" },
   { icon: CalendarOff, label: "Leaves", path: "/warden/leaves" },
   { icon: Megaphone, label: "Notices", path: "/warden/notices" },
   { icon: User, label: "Profile", path: "/warden/profile" }

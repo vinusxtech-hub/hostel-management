@@ -12,8 +12,11 @@ router.use(wardenOnly);
 router.get('/stats', wardenController.getDashboardStats);
 router.get('/students', wardenController.getStudents);
 router.get('/students/:id', wardenController.getStudentDetails);
-router.get('/complaints', wardenController.getComplaints);
-router.put('/complaints/:id', wardenController.updateComplaint);
+router.get('/resolutions', wardenController.getResolutions);
+router.put('/resolutions/:id', wardenController.updateResolution);
+// Backward compatibility
+router.get('/resolutions', wardenController.getResolutions);
+router.put('/resolutions/:id', wardenController.updateResolution);
 
 // Leave Management routes
 router.get('/leaves', leaveController.getPendingLeaves);

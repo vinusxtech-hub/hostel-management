@@ -8,7 +8,7 @@ A complete production-ready React.js web application for managing hostel attenda
 - **Dashboard**: Real-time attendance status with geolocation integration
 - **Attendance**: Mark daily attendance and view history
 - **Activity**: View attendance statistics and trends
-- **Complaints**: Submit and track hostel complaints
+- **Resolutions**: Submit and track hostel resolutions
 - **Reports**: Comprehensive attendance analytics with charts
 - **Profile**: Manage account information and settings
 
@@ -56,7 +56,7 @@ src/
 │   │   ├── Dashboard.jsx   # Student dashboard
 │   │   ├── Attendance.jsx  # Mark attendance
 │   │   ├── Activity.jsx    # Attendance history
-│   │   ├── Complaints.jsx  # Submit complaints
+│   │   ├── Resolutions.jsx  # Submit resolutions
 │   │   ├── Reports.jsx     # Attendance reports
 │   │   └── Profile.jsx     # User profile
 │   └── admin/
@@ -184,7 +184,7 @@ error("Something went wrong!");
 - `/dashboard` - Student dashboard
 - `/attendance` - Mark and view attendance
 - `/activity` - Attendance history
-- `/complaints` - Submit/track complaints
+- `/resolutions` - Submit/track resolutions
 - `/reports` - Attendance reports
 - `/profile` - User profile
 
@@ -201,8 +201,8 @@ The application uses a mock API service located in `src/services/api.js`. It inc
 - **Student APIs**:
   - `getAttendanceHistory()` - Fetch attendance records
   - `markAttendance(location)` - Mark attendance
-  - `getComplaints()` - Get complaints list
-  - `submitComplaint(data)` - Submit new complaint
+  - `getResolutions()` - Get resolutions list
+  - `submitResolution(data)` - Submit new resolution
 
 - **Admin APIs**:
   - `getDashboardStats()` - Get dashboard statistics

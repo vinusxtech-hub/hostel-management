@@ -4,7 +4,7 @@
 
 All components, pages, and features have been successfully implemented. The application is production-ready with:
 
-- ✅ 6 Student pages (Dashboard, Attendance, Activity, Complaints, Reports, Profile)
+- ✅ 6 Student pages (Dashboard, Attendance, Activity, Resolutions, Reports, Profile)
 - ✅ 4 Admin pages (Dashboard, Students, Attendance, Reports)
 - ✅ 12 Reusable UI components
 - ✅ Authentication with role-based access control
@@ -74,7 +74,7 @@ src/
 │   ├── student/
 │   │   ├── Activity.jsx
 │   │   ├── Attendance.jsx
-│   │   ├── Complaints.jsx
+│   │   ├── Resolutions.jsx
 │   │   ├── Dashboard.jsx
 │   │   ├── Profile.jsx
 │   │   └── Reports.jsx
@@ -100,7 +100,7 @@ src/
 1. **Dashboard** - Real-time location-based attendance with geolocation
 2. **Attendance** - Mark attendance and view history with calendar
 3. **Activity** - Statistics with weekly/monthly filters
-4. **Complaints** - Submit and track hostel complaints
+4. **Resolutions** - Submit and track hostel resolutions
 5. **Reports** - Multiple chart visualizations (Bar, Pie, Line)
 6. **Profile** - User account management
 
@@ -163,7 +163,7 @@ info("FYI: This is informational!");
 /dashboard          - Student dashboard
 /attendance         - Mark and view attendance
 /activity           - Attendance history and stats
-/complaints         - Submit/track complaints
+/resolutions         - Submit/track resolutions
 /reports            - Attendance reports
 /profile            - User profile
 ```
@@ -190,7 +190,7 @@ The application uses mock APIs in `src/services/api.js`. To connect to a real ba
 // Current mock structure
 export const getAttendanceHistory = async () => { ... }
 export const markAttendance = async (location) => { ... }
-export const getComplaints = async () => { ... }
+export const getResolutions = async () => { ... }
 // etc...
 ```
 

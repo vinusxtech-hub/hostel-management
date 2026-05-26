@@ -134,8 +134,8 @@ export const AdminDashboard = () => {
             color: "text-blue-600"
           },
           { 
-            label: "Pending Complaints", 
-            value: stats.pendingComplaints, 
+            label: "Pending Resolutions", 
+            value: stats.pendingResolutions, 
             description: "Awaiting resolution",
             color: "text-yellow-600"
           }

@@ -22,7 +22,7 @@ const studentNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Attendance', href: '/attendance', icon: CalendarCheck },
   { name: 'Activity', href: '/activity', icon: History },
-  { name: 'Complaints', href: '/complaints', icon: MessageSquare },
+  { name: 'Resolutions', href: '/resolutions', icon: MessageSquare },
   { name: 'Leaves', href: '/leaves', icon: CalendarOff },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Notices', href: '/notices', icon: Megaphone },
@@ -41,7 +41,7 @@ const adminNavigation = [
 const wardenNavigation = [
   { name: 'Dashboard', href: '/warden/dashboard', icon: LayoutDashboard },
   { name: 'Students', href: '/warden/students', icon: Users },
-  { name: 'Complaints', href: '/warden/complaints', icon: MessageSquare },
+  { name: 'Resolutions', href: '/warden/resolutions', icon: MessageSquare },
   { name: 'Leaves', href: '/warden/leaves', icon: CalendarOff },
   { name: 'Notices', href: '/warden/notices', icon: Megaphone },
   { name: 'Profile', href: '/warden/profile', icon: User },
@@ -71,7 +71,7 @@ export const MainLayout = () => {
         )}
       >
         <div className="h-16 flex items-center px-6 bg-slate-950 font-bold text-xl tracking-tight">
-          HostelTrack
+          Sistec Hostel
         </div>
         
         <div className="px-4 py-6 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">

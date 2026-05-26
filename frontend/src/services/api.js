@@ -83,14 +83,29 @@ export const api = {
       });
       return handleResponse(response);
     },
-    getComplaints: async () => {
-      const response = await fetch(`${BASE_URL}/student/complaints`, {
+    getResolutions: async () => {
+      const response = await fetch(`${BASE_URL}/student/resolutions`, {
         headers: authHeaders(),
       });
       return handleResponse(response);
     },
-    submitComplaint: async (data) => {
-      const response = await fetch(`${BASE_URL}/student/complaints`, {
+    submitResolution: async (data) => {
+      const response = await fetch(`${BASE_URL}/student/resolutions`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    // Backward compatibility aliases
+    getResolutions: async () => {
+      const response = await fetch(`${BASE_URL}/student/resolutions`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    submitResolution: async (data) => {
+      const response = await fetch(`${BASE_URL}/student/resolutions`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify(data),
@@ -200,14 +215,29 @@ export const api = {
       });
       return handleResponse(response);
     },
-    getComplaints: async () => {
-      const response = await fetch(`${BASE_URL}/admin/complaints`, {
+    getResolutions: async () => {
+      const response = await fetch(`${BASE_URL}/admin/resolutions`, {
         headers: authHeaders(),
       });
       return handleResponse(response);
     },
-    updateComplaint: async (id, data) => {
-      const response = await fetch(`${BASE_URL}/admin/complaints/${id}`, {
+    updateResolution: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/admin/resolutions/${id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    // Backward compatibility
+    getResolutions: async () => {
+      const response = await fetch(`${BASE_URL}/admin/resolutions`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    updateResolution: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/admin/resolutions/${id}`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(data),
@@ -277,15 +307,30 @@ export const api = {
       });
       return handleResponse(response);
     },
-    getComplaints: async (params = {}) => {
+    getResolutions: async (params = {}) => {
       const query = new URLSearchParams(params).toString();
-      const response = await fetch(`${BASE_URL}/warden/complaints${query ? `?${query}` : ''}`, {
+      const response = await fetch(`${BASE_URL}/warden/resolutions${query ? `?${query}` : ''}`, {
         headers: authHeaders(),
       });
       return handleResponse(response);
     },
-    updateComplaint: async (id, data) => {
-      const response = await fetch(`${BASE_URL}/warden/complaints/${id}`, {
+    updateResolution: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/warden/resolutions/${id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    getResolutions: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      const response = await fetch(`${BASE_URL}/warden/resolutions${query ? `?${query}` : ''}`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    updateResolution: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/warden/resolutions/${id}`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(data),

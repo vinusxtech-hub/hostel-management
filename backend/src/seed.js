@@ -2,7 +2,7 @@ require('dotenv').config();
 const { connectDB, disconnectDB } = require('./config/db');
 const User = require('./models/User');
 const Attendance = require('./models/Attendance');
-const Complaint = require('./models/Complaint');
+const Resolution = require('./models/Resolution');
 
 const seedDB = async () => {
   try {
@@ -12,7 +12,7 @@ const seedDB = async () => {
     // Clear existing data
     await User.deleteMany({});
     await Attendance.deleteMany({});
-    await Complaint.deleteMany({});
+    await Resolution.deleteMany({});
     console.log('Cleared existing data');
 
     // Create admin
@@ -95,8 +95,8 @@ const seedDB = async () => {
     await Attendance.insertMany(attendanceRecords);
     console.log(`${attendanceRecords.length} attendance records created`);
 
-    // Create complaints
-    const complaintsData = [
+    // Create resolutions
+    const resolutionsData = [
       { userId: students[0]._id, category: 'Maintenance', description: 'Fan is not working in room A-101', status: 'Pending' },
       { userId: students[0]._id, category: 'Cleanliness', description: 'Washroom needs cleaning on 2nd floor', status: 'Resolved' },
       { userId: students[1]._id, category: 'Internet/Wi-Fi', description: 'Wi-Fi signal very weak in B block', status: 'In Progress' },
@@ -105,8 +105,8 @@ const seedDB = async () => {
       { userId: students[4]._id, category: 'Plumbing', description: 'Water leakage in bathroom', status: 'Resolved' },
     ];
 
-    await Complaint.create(complaintsData);
-    console.log(`${complaintsData.length} complaints created`);
+    await Resolution.create(resolutionsData);
+    console.log(`${resolutionsData.length} resolutions created`);
 
     console.log('\n--- Seed Complete ---');
     console.log('Admin login: admin@test.com / password');

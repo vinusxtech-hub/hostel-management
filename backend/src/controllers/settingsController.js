@@ -32,9 +32,9 @@ exports.getAttendanceSettings = async (req, res) => {
       .map(d => d.trim())
       .filter(Boolean);
 
-    // Complaint categories (configurable via env, comma-separated)
+    // Resolution categories (configurable via env, comma-separated)
     const defaultCategories = 'Maintenance,Electrical,Plumbing,Cleanliness,Internet/Wi-Fi,Mess Food,Other';
-    const complaintCategories = (process.env.COMPLAINT_CATEGORIES || defaultCategories)
+    const resolutionCategories = (process.env.RESOLUTION_CATEGORIES || defaultCategories)
       .split(',')
       .map(c => c.trim())
       .filter(Boolean);
@@ -44,9 +44,9 @@ exports.getAttendanceSettings = async (req, res) => {
       cutoffTime,
       geofenceRadius,
       status: isOpen ? 'Open' : 'Closed',
-      locationRequired: 'Inside Hostel',
+      locationRequired: 'Inside SISTec campus area',
       departments,
-      complaintCategories
+      resolutionCategories
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch attendance settings' });

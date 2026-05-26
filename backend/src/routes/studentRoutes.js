@@ -12,8 +12,11 @@ router.use(protect);
 router.get('/attendance', studentController.getAttendanceHistory);
 router.post('/attendance', studentController.markAttendance);
 router.get('/reports', studentController.getReports);
-router.get('/complaints', studentController.getComplaints);
-router.post('/complaints', studentController.submitComplaint);
+router.get('/resolutions', studentController.getResolutions);
+router.post('/resolutions', studentController.submitResolution);
+// Backward compatibility
+router.get('/resolutions', studentController.getResolutions);
+router.post('/resolutions', studentController.submitResolution);
 router.get('/profile', studentController.getProfile);
 router.put('/profile', studentController.updateProfile);
 router.get('/settings', settingsController.getAttendanceSettings);

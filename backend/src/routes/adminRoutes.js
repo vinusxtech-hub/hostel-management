@@ -17,8 +17,11 @@ router.post('/students', adminController.addStudent);
 router.post('/students/bulk-import', upload.single('file'), adminController.bulkImportStudents);
 router.get('/attendance', adminController.getAttendance);
 router.get('/reports', adminController.getReports);
-router.get('/complaints', adminController.getComplaints);
-router.put('/complaints/:id', adminController.updateComplaint);
+router.get('/resolutions', adminController.getResolutions);
+router.put('/resolutions/:id', adminController.updateResolution);
+// Backward compatibility
+router.get('/resolutions', adminController.getResolutions);
+router.put('/resolutions/:id', adminController.updateResolution);
 
 // Notice routes
 router.get('/notices', noticeController.getAllNotices);

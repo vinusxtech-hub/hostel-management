@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
-const Complaint = require('../models/Complaint');
+const Resolution = require('../models/Resolution');
 const LeaveRequest = require('../models/LeaveRequest');  // Integration: Leave Management System
 
 const normalizeHostelSection = (value) => {
@@ -29,30 +29,30 @@ exports.getDashboardStats = async (req, res) => {
     const lateToday = todayRecords.filter(r => r.status === 'Late').length;
     const absentToday = totalStudents - presentToday - lateToday;
 
-    // Complaint stats
-    const complaintFilter = studentIds.length ? { userId: { $in: studentIds } } : { userId: null };
-    const pendingComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'Pending' });
-    const inProgressComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'In Progress' });
-    const resolvedComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'Resolved' });
-    const rejectedComplaints = await Complaint.countDocuments({ ...complaintFilter, status: 'Rejected' });
-    const totalComplaints = pendingComplaints + inProgressComplaints + resolvedComplaints + rejectedComplaints;
+    // Resolution stats
+    const resolutionFilter = studentIds.length ? { userId: { $in: studentIds } } : { userId: null };
+    const pendingResolutions = await Resolution.countDocuments({ ...resolutionFilter, status: 'Pending' });
+    const inProgressResolutions = await Resolution.countDocuments({ ...resolutionFilter, status: 'In Progress' });
+    const resolvedResolutions = await Resolution.countDocuments({ ...resolutionFilter, status: 'Resolved' });
+    const rejectedResolutions = await Resolution.countDocuments({ ...resolutionFilter, status: 'Rejected' });
+    const totalResolutions = pendingResolutions + inProgressResolutions + resolvedResolutions + rejectedResolutions;
 
     // Today's resolved
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    const resolvedToday = await Complaint.countDocuments({
-      ...complaintFilter,
+    const resolvedToday = await Resolution.countDocuments({
+      ...resolutionFilter,
       status: 'Resolved',
       updatedAt: { $gte: startOfDay }
     });
 
-    // Recent complaints (last 5)
-    const recentComplaints = await Complaint.find(complaintFilter)
+    // Recent resolutions (last 5)
+    const recentResolutions = await Resolution.find(resolutionFilter)
       .populate('userId', 'name room email hostelSection')
       .sort({ createdAt: -1 })
       .limit(5);
 
-    const formattedRecent = recentComplaints.map(c => ({
+    const formattedRecent = recentResolutions.map(c => ({
       id: c._id,
       studentName: c.userId?.name || 'Unknown',
       studentRoom: c.userId?.room || 'N/A',
@@ -63,8 +63,8 @@ exports.getDashboardStats = async (req, res) => {
       date: c.createdAt.toISOString().split('T')[0]
     }));
 
-    // Weekly complaint trend
-    const weeklyComplaints = [];
+    // Weekly resolution trend
+    const weeklyResolutions = [];
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -74,19 +74,19 @@ exports.getDashboardStats = async (req, res) => {
       const dayEnd = new Date(d);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const newComplaints = await Complaint.countDocuments({
-        ...complaintFilter,
+      const newResolutions = await Resolution.countDocuments({
+        ...resolutionFilter,
         createdAt: { $gte: dayStart, $lte: dayEnd }
       });
-      const resolvedDay = await Complaint.countDocuments({
-        ...complaintFilter,
+      const resolvedDay = await Resolution.countDocuments({
+        ...resolutionFilter,
         status: 'Resolved',
         updatedAt: { $gte: dayStart, $lte: dayEnd }
       });
 
-      weeklyComplaints.push({
+      weeklyResolutions.push({
         day: days[d.getDay()],
-        new: newComplaints,
+        new: newResolutions,
         resolved: resolvedDay
       });
     }
@@ -103,14 +103,14 @@ exports.getDashboardStats = async (req, res) => {
       presentToday,
       absentToday: Math.max(0, absentToday),
       lateToday,
-      totalComplaints,
-      pendingComplaints,
-      inProgressComplaints,
-      resolvedComplaints,
-      rejectedComplaints,
+      totalResolutions: totalResolutions,
+      pendingResolutions: pendingResolutions,
+      inProgressResolutions: inProgressResolutions,
+      resolvedResolutions: resolvedResolutions,
+      rejectedResolutions: rejectedResolutions,
       resolvedToday,
-      recentComplaints: formattedRecent,
-      weeklyComplaints,
+      recentResolutions: formattedRecent,
+      weeklyResolutions,
       hostelSection: req.user.hostelSection || '',
       // Leave stats
       totalLeaves,
@@ -140,9 +140,9 @@ exports.getStudents = async (req, res) => {
       });
       const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
 
-      // Get complaint count for this student
-      const complaintCount = await Complaint.countDocuments({ userId: student._id });
-      const pendingComplaintCount = await Complaint.countDocuments({ userId: student._id, status: 'Pending' });
+      // Get resolution count for this student
+      const resolutionCount = await Resolution.countDocuments({ userId: student._id });
+      const pendingResolutionCount = await Resolution.countDocuments({ userId: student._id, status: 'Pending' });
 
       return {
         id: student._id,
@@ -157,8 +157,8 @@ exports.getStudents = async (req, res) => {
         address: student.address || 'N/A',
         attendanceRate: rate,
         status: todayRecord ? 'Inside' : 'Outside',
-        totalComplaints: complaintCount,
-        pendingComplaints: pendingComplaintCount
+        totalResolutions: resolutionCount,
+        pendingResolutions: pendingResolutionCount
       };
     }));
 
@@ -189,8 +189,8 @@ exports.getStudentDetails = async (req, res) => {
       .sort({ date: -1 })
       .limit(30);
 
-    // Get all complaints
-    const complaints = await Complaint.find({ userId: student._id })
+    // Get all resolutions
+    const resolutions = await Resolution.find({ userId: student._id })
       .sort({ createdAt: -1 });
 
     // Attendance stats
@@ -247,7 +247,7 @@ exports.getStudentDetails = async (req, res) => {
           location: a.location
         }))
       },
-      complaints: complaints.map(c => ({
+      resolutions: resolutions.map(c => ({
         id: c._id,
         category: c.category,
         description: c.description,
@@ -273,9 +273,9 @@ exports.getStudentDetails = async (req, res) => {
   }
 };
 
-// @desc    Get all complaints
-// @route   GET /api/warden/complaints
-exports.getComplaints = async (req, res) => {
+// @desc    Get all resolutions
+// @route   GET /api/warden/resolutions
+exports.getResolutions = async (req, res) => {
   try {
     const { status, category } = req.query;
     const filter = {};
@@ -285,12 +285,12 @@ exports.getComplaints = async (req, res) => {
     const studentIds = await User.find({ role: 'student', ...getHostelSectionFilter(req.user) }).distinct('_id');
     filter.userId = studentIds.length ? { $in: studentIds } : null;
 
-    const complaints = await Complaint.find(filter)
+    const resolutions = await Resolution.find(filter)
       .populate('userId', 'name room email department phone hostelSection')
       .populate('resolvedBy', 'name')
       .sort({ createdAt: -1 });
 
-    const formatted = complaints.map(c => ({
+    const formatted = resolutions.map(c => ({
       id: c._id,
       studentName: c.userId?.name || 'Unknown',
       studentRoom: c.userId?.room || 'N/A',
@@ -311,14 +311,17 @@ exports.getComplaints = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    console.error('Warden complaints error:', error);
-    res.status(500).json({ error: 'Failed to fetch complaints' });
+    console.error('Warden resolutions error:', error);
+    res.status(500).json({ error: 'Failed to fetch resolutions' });
   }
 };
 
-// @desc    Update complaint status
-// @route   PUT /api/warden/complaints/:id
-exports.updateComplaint = async (req, res) => {
+// Keep backward compatibility
+exports.getResolutions = exports.getResolutions;
+
+// @desc    Update resolution status
+// @route   PUT /api/warden/resolutions/:id
+exports.updateResolution = async (req, res) => {
   try {
     const { status, wardenResponse } = req.body;
     const updateData = {};
@@ -326,23 +329,23 @@ exports.updateComplaint = async (req, res) => {
     if (status) updateData.status = status;
     if (wardenResponse !== undefined) updateData.wardenResponse = wardenResponse;
 
-    // Track who resolved/handled the complaint
+    // Track who resolved/handled the resolution
     if (status === 'Resolved' || status === 'Rejected') {
       updateData.resolvedBy = req.user._id;
     }
 
-    const existingComplaint = await Complaint.findById(req.params.id).populate('userId', 'hostelSection');
-    if (!existingComplaint) {
-      return res.status(404).json({ error: 'Complaint not found' });
+    const existingResolution = await Resolution.findById(req.params.id).populate('userId', 'hostelSection');
+    if (!existingResolution) {
+      return res.status(404).json({ error: 'Resolution not found' });
     }
     if (
       normalizeHostelSection(req.user.hostelSection) &&
-      existingComplaint.userId?.hostelSection !== normalizeHostelSection(req.user.hostelSection)
+      existingResolution.userId?.hostelSection !== normalizeHostelSection(req.user.hostelSection)
     ) {
       return res.status(403).json({ error: 'Access denied for this hostel section' });
     }
 
-    const complaint = await Complaint.findByIdAndUpdate(
+    const resolution = await Resolution.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
@@ -351,25 +354,28 @@ exports.updateComplaint = async (req, res) => {
       .populate('resolvedBy', 'name');
 
     res.json({
-      id: complaint._id,
-      studentName: complaint.userId?.name || 'Unknown',
-      studentRoom: complaint.userId?.room || 'N/A',
-      studentEmail: complaint.userId?.email || '',
-      studentDepartment: complaint.userId?.department || 'N/A',
-      studentPhone: complaint.userId?.phone || 'N/A',
-      hostelSection: complaint.userId?.hostelSection || '',
-      category: complaint.category,
-      description: complaint.description,
-      status: complaint.status,
-      wardenResponse: complaint.wardenResponse || '',
-      adminResponse: complaint.adminResponse || '',
-      resolvedByName: complaint.resolvedBy?.name || '',
-      createdAt: complaint.createdAt,
-      updatedAt: complaint.updatedAt,
-      date: complaint.createdAt.toISOString().split('T')[0]
+      id: resolution._id,
+      studentName: resolution.userId?.name || 'Unknown',
+      studentRoom: resolution.userId?.room || 'N/A',
+      studentEmail: resolution.userId?.email || '',
+      studentDepartment: resolution.userId?.department || 'N/A',
+      studentPhone: resolution.userId?.phone || 'N/A',
+      hostelSection: resolution.userId?.hostelSection || '',
+      category: resolution.category,
+      description: resolution.description,
+      status: resolution.status,
+      wardenResponse: resolution.wardenResponse || '',
+      adminResponse: resolution.adminResponse || '',
+      resolvedByName: resolution.resolvedBy?.name || '',
+      createdAt: resolution.createdAt,
+      updatedAt: resolution.updatedAt,
+      date: resolution.createdAt.toISOString().split('T')[0]
     });
   } catch (error) {
-    console.error('Update complaint error:', error);
-    res.status(500).json({ error: 'Failed to update complaint' });
+    console.error('Update resolution error:', error);
+    res.status(500).json({ error: 'Failed to update resolution' });
   }
 };
+
+// Keep backward compatibility
+exports.updateResolution = exports.updateResolution;

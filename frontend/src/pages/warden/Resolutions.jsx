@@ -23,8 +23,8 @@ import {
   Search
 } from "lucide-react";
 
-export const WardenComplaints = () => {
-  const [complaints, setComplaints] = useState([]);
+export const WardenResolutions = () => {
+  const [resolutions, setResolutions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -37,21 +37,21 @@ export const WardenComplaints = () => {
   const sectionLabel = user?.hostelSection === "girls" ? "Girls Hostel" : user?.hostelSection === "boys" ? "Boys Hostel" : "Assigned Hostel";
 
   useEffect(() => {
-    fetchComplaints();
+    fetchResolutions();
   }, []);
 
-  const fetchComplaints = async () => {
+  const fetchResolutions = async () => {
     try {
-      const data = await api.warden.getComplaints();
-      setComplaints(data);
+      const data = await api.warden.getResolutions();
+      setResolutions(data);
     } catch (err) {
-      error("Failed to load complaints");
+      error("Failed to load resolutions");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleStatusUpdate = async (complaintId, newStatus) => {
+  const handleStatusUpdate = async (resolutionId, newStatus) => {
     setIsUpdating(true);
     try {
       const updateData = { status: newStatus };
@@ -59,28 +59,28 @@ export const WardenComplaints = () => {
         updateData.wardenResponse = responseText.trim();
       }
 
-      const updated = await api.warden.updateComplaint(complaintId, updateData);
-      setComplaints(complaints.map(c => c.id === complaintId ? updated : c));
+      const updated = await api.warden.updateResolution(resolutionId, updateData);
+      setResolutions(resolutions.map(c => c.id === resolutionId ? updated : c));
       setResponseText("");
-      success(`Complaint marked as ${newStatus}`);
+      success(`Resolution marked as ${newStatus}`);
     } catch (err) {
-      error("Failed to update complaint");
+      error("Failed to update resolution");
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const handleSendResponse = async (complaintId) => {
+  const handleSendResponse = async (resolutionId) => {
     if (!responseText.trim()) {
       error("Please enter a response");
       return;
     }
     setIsUpdating(true);
     try {
-      const updated = await api.warden.updateComplaint(complaintId, {
+      const updated = await api.warden.updateResolution(resolutionId, {
         wardenResponse: responseText.trim()
       });
-      setComplaints(complaints.map(c => c.id === complaintId ? updated : c));
+      setResolutions(resolutions.map(c => c.id === resolutionId ? updated : c));
       setResponseText("");
       success("Response sent successfully");
     } catch (err) {
@@ -96,8 +96,8 @@ export const WardenComplaints = () => {
       setResponseText("");
     } else {
       setExpandedId(id);
-      const complaint = complaints.find(c => c.id === id);
-      setResponseText(complaint?.wardenResponse || "");
+      const resolution = resolutions.find(c => c.id === id);
+      setResponseText(resolution?.wardenResponse || "");
     }
   };
 
@@ -169,7 +169,7 @@ export const WardenComplaints = () => {
   const categories = ["All", "Maintenance", "Electrical", "Plumbing", "Cleanliness", "Internet/Wi-Fi", "Mess Food", "Other"];
   const statuses = ["All", "Pending", "In Progress", "Resolved", "Rejected"];
 
-  const filteredComplaints = complaints.filter(c => {
+  const filteredResolutions = resolutions.filter(c => {
     const matchesStatus = statusFilter === "All" || c.status === statusFilter;
     const matchesCategory = categoryFilter === "All" || c.category === categoryFilter;
     const matchesSearch = searchTerm === "" ||
@@ -181,11 +181,11 @@ export const WardenComplaints = () => {
 
   // Count by status
   const statusCounts = {
-    All: complaints.length,
-    Pending: complaints.filter(c => c.status === "Pending").length,
-    "In Progress": complaints.filter(c => c.status === "In Progress").length,
-    Resolved: complaints.filter(c => c.status === "Resolved").length,
-    Rejected: complaints.filter(c => c.status === "Rejected").length
+    All: resolutions.length,
+    Pending: resolutions.filter(c => c.status === "Pending").length,
+    "In Progress": resolutions.filter(c => c.status === "In Progress").length,
+    Resolved: resolutions.filter(c => c.status === "Resolved").length,
+    Rejected: resolutions.filter(c => c.status === "Rejected").length
   };
 
   if (isLoading) {
@@ -207,9 +207,9 @@ export const WardenComplaints = () => {
             <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl text-white shadow-lg shadow-rose-500/25">
               <MessageSquare className="w-7 h-7" />
             </div>
-            Manage Complaints
+            Manage Resolutions
           </h1>
-          <p className="text-slate-600 mt-2">Review, respond to, and resolve student complaints for {sectionLabel}</p>
+          <p className="text-slate-600 mt-2">Review, respond to, and resolve student resolutions for {sectionLabel}</p>
         </div>
       </div>
 
@@ -270,62 +270,62 @@ export const WardenComplaints = () => {
         </div>
       </Card>
 
-      {/* Complaints List */}
-      {filteredComplaints.length === 0 ? (
+      {/* Resolutions List */}
+      {filteredResolutions.length === 0 ? (
         <Card>
           <div className="text-center py-16">
             <div className="p-4 bg-slate-100 rounded-full inline-block mb-4">
               <CheckCircle className="w-10 h-10 text-slate-300" />
             </div>
-            <p className="text-lg font-medium text-slate-500">No complaints found</p>
+            <p className="text-lg font-medium text-slate-500">No resolutions found</p>
             <p className="text-sm text-slate-400 mt-1">
               {statusFilter !== "All" || categoryFilter !== "All" 
                 ? "Try changing your filters" 
-                : "All clear! No complaints have been submitted."}
+                : "All clear! No resolutions have been submitted."}
             </p>
           </div>
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredComplaints.map((complaint) => {
-            const isExpanded = expandedId === complaint.id;
-            const nextStatuses = getNextStatuses(complaint.status);
+          {filteredResolutions.map((resolution) => {
+            const isExpanded = expandedId === resolution.id;
+            const nextStatuses = getNextStatuses(resolution.status);
 
             return (
               <Card
-                key={complaint.id}
+                key={resolution.id}
                 className={`transition-all duration-300 ${isExpanded ? 'ring-2 ring-primary-200 shadow-lg' : ''}`}
               >
-                {/* Complaint Header — Clickable */}
+                {/* Resolution Header — Clickable */}
                 <div
                   className="flex items-start gap-4 cursor-pointer"
-                  onClick={() => toggleExpand(complaint.id)}
+                  onClick={() => toggleExpand(resolution.id)}
                 >
-                  <span className="text-3xl flex-shrink-0 mt-1">{getCategoryEmoji(complaint.category)}</span>
+                  <span className="text-3xl flex-shrink-0 mt-1">{getCategoryEmoji(resolution.category)}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-semibold text-slate-900">{complaint.studentName}</span>
+                      <span className="font-semibold text-slate-900">{resolution.studentName}</span>
                       <span className="text-xs text-slate-400">•</span>
                       <span className="text-xs text-slate-500 flex items-center gap-1">
-                        <Home className="w-3 h-3" /> {complaint.studentRoom}
+                        <Home className="w-3 h-3" /> {resolution.studentRoom}
                       </span>
                       <span className="text-xs text-slate-400">•</span>
-                      <span className="text-xs text-slate-500">{complaint.studentDepartment}</span>
+                      <span className="text-xs text-slate-500">{resolution.studentDepartment}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {complaint.category}
+                        {resolution.category}
                       </span>
-                      <span className="text-xs text-slate-400">{getTimeAgo(complaint.createdAt)}</span>
+                      <span className="text-xs text-slate-400">{getTimeAgo(resolution.createdAt)}</span>
                     </div>
                     <p className={`text-sm text-slate-700 ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                      {complaint.description}
+                      {resolution.description}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusStyle(complaint.status)}`}>
-                      {getStatusIcon(complaint.status)}
-                      {complaint.status}
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusStyle(resolution.status)}`}>
+                      {getStatusIcon(resolution.status)}
+                      {resolution.status}
                     </span>
                     <button className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
                       {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -342,15 +342,15 @@ export const WardenComplaints = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="w-4 h-4 text-slate-400" />
-                          <span className="text-slate-700">{complaint.studentEmail}</span>
+                          <span className="text-slate-700">{resolution.studentEmail}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Phone className="w-4 h-4 text-slate-400" />
-                          <span className="text-slate-700">{complaint.studentPhone}</span>
+                          <span className="text-slate-700">{resolution.studentPhone}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Home className="w-4 h-4 text-slate-400" />
-                          <span className="text-slate-700">Room {complaint.studentRoom}</span>
+                          <span className="text-slate-700">Room {resolution.studentRoom}</span>
                         </div>
                       </div>
                     </div>
@@ -359,27 +359,27 @@ export const WardenComplaints = () => {
                     <div>
                       <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Full Description</h4>
                       <p className="text-sm text-slate-700 bg-white p-4 rounded-xl border border-slate-100 leading-relaxed">
-                        {complaint.description}
+                        {resolution.description}
                       </p>
                     </div>
 
                     {/* Existing Response */}
-                    {complaint.wardenResponse && (
+                    {resolution.wardenResponse && (
                       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
                         <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-2">Your Previous Response</h4>
-                        <p className="text-sm text-indigo-800">{complaint.wardenResponse}</p>
+                        <p className="text-sm text-indigo-800">{resolution.wardenResponse}</p>
                       </div>
                     )}
 
-                    {complaint.adminResponse && (
+                    {resolution.adminResponse && (
                       <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
                         <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-2">Admin Response</h4>
-                        <p className="text-sm text-purple-800">{complaint.adminResponse}</p>
+                        <p className="text-sm text-purple-800">{resolution.adminResponse}</p>
                       </div>
                     )}
 
                     {/* Response Input + Status Actions */}
-                    {complaint.status !== "Resolved" && (
+                    {resolution.status !== "Resolved" && (
                       <div className="space-y-4">
                         {/* Response textarea */}
                         <div>
@@ -395,7 +395,7 @@ export const WardenComplaints = () => {
                               rows={3}
                             />
                             <button
-                              onClick={() => handleSendResponse(complaint.id)}
+                              onClick={() => handleSendResponse(resolution.id)}
                               disabled={isUpdating || !responseText.trim()}
                               className="absolute bottom-3 right-3 p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
@@ -414,7 +414,7 @@ export const WardenComplaints = () => {
                               {nextStatuses.map(status => (
                                 <button
                                   key={status}
-                                  onClick={() => handleStatusUpdate(complaint.id, status)}
+                                  onClick={() => handleStatusUpdate(resolution.id, status)}
                                   disabled={isUpdating}
                                   className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-50 ${getStatusButtonStyle(status)}`}
                                 >
@@ -429,13 +429,13 @@ export const WardenComplaints = () => {
                     )}
 
                     {/* Resolved Info */}
-                    {complaint.status === "Resolved" && (
+                    {resolution.status === "Resolved" && (
                       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3">
                         <CheckCircle className="w-6 h-6 text-emerald-500 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-emerald-800">This complaint has been resolved</p>
-                          {complaint.resolvedByName && (
-                            <p className="text-xs text-emerald-600 mt-0.5">Handled by: {complaint.resolvedByName}</p>
+                          <p className="text-sm font-medium text-emerald-800">This resolution has been resolved</p>
+                          {resolution.resolvedByName && (
+                            <p className="text-xs text-emerald-600 mt-0.5">Handled by: {resolution.resolvedByName}</p>
                           )}
                         </div>
                       </div>
@@ -445,9 +445,9 @@ export const WardenComplaints = () => {
                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                       <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Timeline</h4>
                       <div className="flex items-center gap-2 text-xs text-slate-600">
-                        <span>Created: {new Date(complaint.createdAt).toLocaleString()}</span>
+                        <span>Created: {new Date(resolution.createdAt).toLocaleString()}</span>
                         <span className="text-slate-300">|</span>
-                        <span>Last Updated: {new Date(complaint.updatedAt).toLocaleString()}</span>
+                        <span>Last Updated: {new Date(resolution.updatedAt).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

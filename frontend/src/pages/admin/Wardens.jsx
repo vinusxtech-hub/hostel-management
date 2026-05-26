@@ -220,12 +220,12 @@ export const AdminWardens = () => {
                 </div>
                 <div className="text-center p-3 bg-emerald-50/80 rounded-xl border border-emerald-100">
                   <CheckCircle className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-slate-800">{warden.complaintsResolved}</p>
+                  <p className="text-lg font-bold text-slate-800">{warden.resolutionsResolved}</p>
                   <p className="text-[10px] text-emerald-600 font-medium">Resolved</p>
                 </div>
                 <div className="text-center p-3 bg-amber-50/80 rounded-xl border border-amber-100">
                   <AlertCircle className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-slate-800">{warden.sectionPendingComplaints}</p>
+                  <p className="text-lg font-bold text-slate-800">{warden.sectionPendingResolutions}</p>
                   <p className="text-[10px] text-amber-600 font-medium">Pending</p>
                 </div>
                 <div className="text-center p-3 bg-violet-50/80 rounded-xl border border-violet-100">
@@ -306,7 +306,7 @@ export const AdminWardens = () => {
             <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
               {[
                 { key: "overview", label: "Overview", icon: TrendingUp },
-                { key: "complaints", label: "Complaints", icon: MessageSquare },
+                { key: "resolutions", label: "Resolutions", icon: MessageSquare },
                 { key: "notices", label: "Notices", icon: Megaphone }
               ].map((tab) => (
                 <button
@@ -360,13 +360,13 @@ export const AdminWardens = () => {
                   </div>
                 </div>
 
-                {/* Complaint Breakdown */}
+                {/* Resolution Breakdown */}
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: "Resolved", value: wardenDetails.stats.complaintsResolved, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-                    { label: "Rejected", value: wardenDetails.stats.complaintsRejected, icon: XCircle, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
-                    { label: "In Progress", value: wardenDetails.stats.complaintsInProgress, icon: Clock, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-                    { label: "Pending (Section)", value: wardenDetails.stats.sectionPendingComplaints, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+                    { label: "Resolved", value: wardenDetails.stats.resolutionsResolved, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+                    { label: "Rejected", value: wardenDetails.stats.resolutionsRejected, icon: XCircle, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
+                    { label: "In Progress", value: wardenDetails.stats.resolutionsInProgress, icon: Clock, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+                    { label: "Pending (Section)", value: wardenDetails.stats.sectionPendingResolutions, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
                   ].map((item, i) => (
                     <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${item.bg} border ${item.border}`}>
                       <item.icon className={`w-5 h-5 ${item.color} flex-shrink-0`} />
@@ -402,40 +402,40 @@ export const AdminWardens = () => {
               </div>
             )}
 
-            {activeTab === "complaints" && (
+            {activeTab === "resolutions" && (
               <div className="space-y-3">
-                {wardenDetails.recentComplaints.length === 0 ? (
+                {wardenDetails.recentResolutions.length === 0 ? (
                   <div className="text-center py-10">
                     <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 font-medium">No complaints handled yet</p>
-                    <p className="text-slate-400 text-sm mt-1">This warden hasn't resolved or responded to any complaints.</p>
+                    <p className="text-slate-500 font-medium">No resolutions handled yet</p>
+                    <p className="text-slate-400 text-sm mt-1">This warden hasn't resolved or responded to any resolutions.</p>
                   </div>
                 ) : (
-                  wardenDetails.recentComplaints.map((complaint) => (
+                  wardenDetails.recentResolutions.map((resolution) => (
                     <div
-                      key={complaint.id}
+                      key={resolution.id}
                       className="p-4 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-slate-900 text-sm">{complaint.studentName}</span>
+                            <span className="font-semibold text-slate-900 text-sm">{resolution.studentName}</span>
                             <span className="text-xs text-slate-400">•</span>
-                            <span className="text-xs text-slate-500">Room {complaint.studentRoom}</span>
+                            <span className="text-xs text-slate-500">Room {resolution.studentRoom}</span>
                             <span className="text-xs text-slate-400">•</span>
-                            <span className="text-xs text-slate-400">{complaint.category}</span>
+                            <span className="text-xs text-slate-400">{resolution.category}</span>
                           </div>
-                          <p className="text-sm text-slate-600 mt-1">{complaint.description}</p>
-                          {complaint.wardenResponse && (
+                          <p className="text-sm text-slate-600 mt-1">{resolution.description}</p>
+                          {resolution.wardenResponse && (
                             <div className="mt-2 p-2 bg-violet-50 rounded-lg border border-violet-100">
                               <p className="text-xs text-violet-600 font-medium mb-0.5">Warden Response:</p>
-                              <p className="text-sm text-violet-700">{complaint.wardenResponse}</p>
+                              <p className="text-sm text-violet-700">{resolution.wardenResponse}</p>
                             </div>
                           )}
-                          <p className="text-xs text-slate-400 mt-2">Filed: {complaint.date} • Handled: {complaint.handledAt}</p>
+                          <p className="text-xs text-slate-400 mt-2">Filed: {resolution.date} • Handled: {resolution.handledAt}</p>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getStatusColor(complaint.status)}`}>
-                          {complaint.status}
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getStatusColor(resolution.status)}`}>
+                          {resolution.status}
                         </span>
                       </div>
                     </div>

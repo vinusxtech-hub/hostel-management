@@ -19,7 +19,7 @@ import { ResetPassword } from "./pages/auth/ResetPassword";
 import { Dashboard as StudentDashboard } from "./pages/student/Dashboard";
 import { Attendance } from "./pages/student/Attendance";
 import { Activity } from "./pages/student/Activity";
-import { Complaints } from "./pages/student/Complaints";
+import { Resolutions } from "./pages/student/Resolutions";
 import { Reports as StudentReports } from "./pages/student/Reports";
 import { Profile } from "./pages/student/Profile";
 import { Notices as StudentNotices } from "./pages/student/Notices";
@@ -36,7 +36,7 @@ import { AdminWardens } from "./pages/admin/Wardens";
 // Warden Pages
 import { WardenDashboard } from "./pages/warden/Dashboard";
 import { WardenStudents } from "./pages/warden/Students";
-import { WardenComplaints } from "./pages/warden/Complaints";
+import { WardenResolutions } from "./pages/warden/Resolutions";
 import { WardenNotices } from "./pages/warden/Notices";
 import { WardenLeaves } from "./pages/warden/Leaves";  
 
@@ -75,7 +75,7 @@ function AppContent() {
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="activity" element={<Activity />} />
-          <Route path="complaints" element={<Complaints />} />
+          <Route path="resolutions" element={<Resolutions />} />
           <Route path="reports" element={<StudentReports />} />
           <Route path="notices" element={<StudentNotices />} />
           <Route path="leaves" element={<LeaveRequest />} />
@@ -97,7 +97,7 @@ function AppContent() {
         <Route path="/warden" element={<ProtectedRoute requiredRole="warden"><MainLayout /></ProtectedRoute>}>
           <Route path="dashboard" element={<WardenDashboard />} />
           <Route path="students" element={<WardenStudents />} />
-          <Route path="complaints" element={<WardenComplaints />} />
+          <Route path="resolutions" element={<WardenResolutions />} />
           <Route path="notices" element={<WardenNotices />} />
           <Route path="leaves" element={<WardenLeaves />} />
           <Route path="profile" element={<Profile />} />

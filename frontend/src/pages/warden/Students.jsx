@@ -95,7 +95,7 @@ export const WardenStudents = () => {
       filter === "all" ||
       (filter === "inside" && s.status === "Inside") ||
       (filter === "outside" && s.status === "Outside") ||
-      (filter === "complaints" && s.pendingComplaints > 0);
+      (filter === "resolutions" && s.pendingResolutions > 0);
     const matchesBuilding = buildingFilter === "all" || s.building === buildingFilter;
     return matchesSearch && matchesFilter && matchesBuilding;
   });
@@ -121,7 +121,7 @@ export const WardenStudents = () => {
     }
   };
 
-  const getComplaintStatusColor = (status) => {
+  const getResolutionStatusColor = (status) => {
     switch (status) {
       case "Resolved": return "bg-emerald-100 text-emerald-700";
       case "In Progress": return "bg-blue-100 text-blue-700";
@@ -157,7 +157,7 @@ export const WardenStudents = () => {
             </div>
             Student Management
           </h1>
-          <p className="text-slate-600 mt-2">View student details, attendance, and complaints for {sectionLabel}</p>
+          <p className="text-slate-600 mt-2">View student details, attendance, and resolutions for {sectionLabel}</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full font-medium border border-emerald-200">
@@ -186,7 +186,7 @@ export const WardenStudents = () => {
               { key: "all", label: "All" },
               { key: "inside", label: "Inside" },
               { key: "outside", label: "Outside" },
-              { key: "complaints", label: "⚠️ Has Complaints" }
+              { key: "resolutions", label: "⚠️ Has Resolutions" }
             ].map((f) => (
               <Button
                 key={f.key}
@@ -283,12 +283,12 @@ export const WardenStudents = () => {
                 </div>
               </div>
 
-              {/* Complaints Badge */}
-              {student.pendingComplaints > 0 && (
+              {/* Resolutions Badge */}
+              {student.pendingResolutions > 0 && (
                 <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-100 rounded-lg">
                   <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   <span className="text-xs font-medium text-amber-700">
-                    {student.pendingComplaints} pending complaint{student.pendingComplaints > 1 ? 's' : ''}
+                    {student.pendingResolutions} pending resolution{student.pendingResolutions > 1 ? 's' : ''}
                   </span>
                 </div>
               )}
@@ -310,7 +310,7 @@ export const WardenStudents = () => {
           { label: "Total Students", value: sectionStudents.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
           { label: "Inside Hostel", value: sectionStudents.filter(s => s.status === "Inside").length, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Outside Hostel", value: sectionStudents.filter(s => s.status === "Outside").length, icon: UserX, color: "text-red-500", bg: "bg-red-50" },
-          { label: "With Complaints", value: sectionStudents.filter(s => s.pendingComplaints > 0).length, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50" }
+          { label: "With Resolutions", value: sectionStudents.filter(s => s.pendingResolutions > 0).length, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50" }
         ].map((stat, idx) => (
           <Card key={idx}>
             <div className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export const WardenStudents = () => {
               {[
                 { key: "overview", label: "Overview", icon: TrendingUp },
                 { key: "attendance", label: "Attendance", icon: UserCheck },
-                { key: "complaints", label: "Complaints", icon: MessageSquare },
+                { key: "resolutions", label: "Resolutions", icon: MessageSquare },
                 { key: "leaves", label: "Leaves", icon: FileText }
               ].map((tab) => (
                 <button key={tab.key} onClick={() => setDetailTab(tab.key)}
@@ -423,7 +423,7 @@ export const WardenStudents = () => {
                   {[
                     { label: "Late Days", value: studentDetails.attendance.lateDays, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
                     { label: "On Leave", value: studentDetails.attendance.onLeaveDays || 0, icon: FileText, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-                    { label: "Complaints", value: studentDetails.complaints.length, icon: MessageSquare, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
+                    { label: "Resolutions", value: studentDetails.resolutions.length, icon: MessageSquare, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
                     { label: "Leave Requests", value: studentDetails.leaveRequests?.length || 0, icon: Calendar, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100" }
                   ].map((item, i) => (
                     <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${item.bg} border ${item.border}`}>
@@ -460,15 +460,15 @@ export const WardenStudents = () => {
               </div>
             )}
 
-            {/* Complaints Tab */}
-            {detailTab === "complaints" && (
+            {/* Resolutions Tab */}
+            {detailTab === "resolutions" && (
               <div className="space-y-3">
-                {studentDetails.complaints.length === 0 ? (
+                {studentDetails.resolutions.length === 0 ? (
                   <div className="text-center py-10">
                     <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 font-medium">No complaints filed</p>
+                    <p className="text-slate-500 font-medium">No resolutions filed</p>
                   </div>
-                ) : studentDetails.complaints.map((c) => (
+                ) : studentDetails.resolutions.map((c) => (
                   <div key={c.id} className="p-4 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -477,7 +477,7 @@ export const WardenStudents = () => {
                         {c.wardenResponse && <div className="mt-2 p-2 bg-violet-50 rounded-lg border border-violet-100"><p className="text-xs text-violet-600 font-medium">Warden: {c.wardenResponse}</p></div>}
                         {c.adminResponse && <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100"><p className="text-xs text-blue-600 font-medium">Admin: {c.adminResponse}</p></div>}
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getComplaintStatusColor(c.status)}`}>{c.status}</span>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getResolutionStatusColor(c.status)}`}>{c.status}</span>
                     </div>
                   </div>
                 ))}

@@ -1,5 +1,5 @@
 const Attendance = require('../models/Attendance');
-const Complaint = require('../models/Complaint');
+const Resolution = require('../models/Resolution');
 const User = require('../models/User');
 
 // Haversine formula to calculate distance in km
@@ -49,7 +49,7 @@ exports.markAttendance = async (req, res) => {
 
     if (!isInside) {
       return res.status(400).json({
-        error: `You are ${(distance).toFixed(2)} km away from the hostel. You must be within ${radiusMeters}m to mark attendance.`,
+        error: `You are ${(distance).toFixed(2)} km away from the SISTec campus area. You must be within ${radiusMeters}m to mark attendance.`,
         distance: distance.toFixed(4),
         location: 'Outside'
       });
@@ -166,15 +166,15 @@ exports.getReports = async (req, res) => {
   }
 };
 
-// @desc    Get complaints for logged-in student
-// @route   GET /api/student/complaints
-exports.getComplaints = async (req, res) => {
+// @desc    Get resolutions for logged-in student
+// @route   GET /api/student/resolutions
+exports.getResolutions = async (req, res) => {
   try {
-    const complaints = await Complaint.find({ userId: req.user._id })
+    const resolutions = await Resolution.find({ userId: req.user._id })
       .sort({ createdAt: -1 });
     
     // Format to match frontend expectations
-    const formatted = complaints.map(c => ({
+    const formatted = resolutions.map(c => ({
       id: c._id,
       category: c.category,
       description: c.description,
@@ -185,13 +185,16 @@ exports.getComplaints = async (req, res) => {
 
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch complaints' });
+    res.status(500).json({ error: 'Failed to fetch resolutions' });
   }
 };
 
-// @desc    Submit new complaint
-// @route   POST /api/student/complaints
-exports.submitComplaint = async (req, res) => {
+// Keep backward compatibility alias
+exports.getResolutions = exports.getResolutions;
+
+// @desc    Submit new resolution
+// @route   POST /api/student/resolutions
+exports.submitResolution = async (req, res) => {
   try {
     const { category, description } = req.body;
 
@@ -199,23 +202,26 @@ exports.submitComplaint = async (req, res) => {
       return res.status(400).json({ error: 'Category and description are required' });
     }
 
-    const complaint = await Complaint.create({
+    const resolution = await Resolution.create({
       userId: req.user._id,
       category,
       description
     });
 
     res.status(201).json({
-      id: complaint._id,
-      category: complaint.category,
-      description: complaint.description,
-      status: complaint.status,
-      date: complaint.createdAt.toISOString().split('T')[0]
+      id: resolution._id,
+      category: resolution.category,
+      description: resolution.description,
+      status: resolution.status,
+      date: resolution.createdAt.toISOString().split('T')[0]
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to submit complaint' });
+    res.status(500).json({ error: 'Failed to submit resolution' });
   }
 };
+
+// Keep backward compatibility alias
+exports.submitResolution = exports.submitResolution;
 
 // @desc    Get student profile
 // @route   GET /api/student/profile

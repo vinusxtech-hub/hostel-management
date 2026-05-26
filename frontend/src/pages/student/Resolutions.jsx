@@ -8,9 +8,9 @@ import { CardSkeleton } from "../../components/Skeleton";
 import { api } from "../../services/api";
 import { Plus, AlertCircle, CheckCircle, Clock } from "lucide-react";
 
-export const Complaints = () => {
+export const Resolutions = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [complaints, setComplaints] = useState([]);
+  const [resolutions, setResolutions] = useState([]);
   const [filter, setFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ category: "", description: "" });
@@ -19,11 +19,11 @@ export const Complaints = () => {
   const { success, error } = useToast();
 
   useEffect(() => {
-    fetchComplaints();
+    fetchResolutions();
     const loadSettings = async () => {
       try {
         const data = await api.student.getSettings();
-        setCategories(data.complaintCategories || []);
+        setCategories(data.resolutionCategories || []);
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
@@ -31,12 +31,12 @@ export const Complaints = () => {
     loadSettings();
   }, []);
 
-  const fetchComplaints = async () => {
+  const fetchResolutions = async () => {
     try {
-      const data = await api.student.getComplaints();
-      setComplaints(data);
+      const data = await api.student.getResolutions();
+      setResolutions(data);
     } catch (err) {
-      error("Failed to load complaints");
+      error("Failed to load resolutions");
     } finally {
       setIsLoading(false);
     }
@@ -51,13 +51,13 @@ export const Complaints = () => {
 
     setIsSubmitting(true);
     try {
-      const newComplaint = await api.student.submitComplaint(formData);
-      setComplaints([newComplaint, ...complaints]);
+      const newResolution = await api.student.submitResolution(formData);
+      setResolutions([newResolution, ...resolutions]);
       setFormData({ category: "", description: "" });
       setShowModal(false);
-      success("Complaint submitted successfully!");
+      success("Resolution submitted successfully!");
     } catch (err) {
-      error("Failed to submit complaint");
+      error("Failed to submit resolution");
     } finally {
       setIsSubmitting(false);
     }
@@ -98,15 +98,15 @@ export const Complaints = () => {
     );
   }
 
-  const filteredComplaints = complaints.filter(c => filter === "All" || c.status === filter);
+  const filteredResolutions = resolutions.filter(r => filter === "All" || r.status === filter);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Complaints</h1>
-          <p className="text-slate-600 mt-1">Submit and track your hostel complaints</p>
+          <h1 className="text-3xl font-bold text-slate-900">Resolutions</h1>
+          <p className="text-slate-600 mt-1">Submit and track your hostel resolutions</p>
         </div>
         <div className="flex items-center gap-3">
           <select 
@@ -126,29 +126,29 @@ export const Complaints = () => {
         </div>
       </div>
 
-      {/* Complaints List */}
+      {/* Resolutions List */}
       <div className="space-y-4">
-        {filteredComplaints.length === 0 ? (
+        {filteredResolutions.length === 0 ? (
           <Card>
             <div className="text-center py-12">
               <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">No complaints found</p>
+              <p className="text-slate-600">No resolutions found</p>
             </div>
           </Card>
         ) : (
-          filteredComplaints.map((complaint) => (
-            <Card key={complaint.id}>
+          filteredResolutions.map((resolution) => (
+            <Card key={resolution.id}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">{complaint.category}</h3>
-                  <p className="text-sm text-slate-600 mt-1">{complaint.date}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{resolution.category}</h3>
+                  <p className="text-sm text-slate-600 mt-1">{resolution.date}</p>
                 </div>
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${getStatusColor(complaint.status)}`}>
-                  {getStatusIcon(complaint.status)}
-                  <span className="text-sm font-medium">{complaint.status}</span>
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${getStatusColor(resolution.status)}`}>
+                  {getStatusIcon(resolution.status)}
+                  <span className="text-sm font-medium">{resolution.status}</span>
                 </div>
               </div>
-              <p className="text-slate-700 mb-4">{complaint.description}</p>
+              <p className="text-slate-700 mb-4">{resolution.description}</p>
             </Card>
           ))
         )}
@@ -157,7 +157,7 @@ export const Complaints = () => {
       {/* Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <h2 className="text-2xl font-bold">New Complaint</h2>
+          <h2 className="text-2xl font-bold">New Resolution</h2>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
             <select
@@ -182,7 +182,7 @@ export const Complaints = () => {
           </div>
           <div className="flex gap-3 pt-4">
             <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? 'Submitting...' : 'Submit Complaint'}
+              {isSubmitting ? 'Submitting...' : 'Submit Resolution'}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
               Cancel

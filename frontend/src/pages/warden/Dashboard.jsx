@@ -66,8 +66,8 @@ export const WardenDashboard = () => {
       text: "text-blue-700"
     },
     {
-      label: "Pending Complaints",
-      value: stats.pendingComplaints,
+      label: "Pending Resolutions",
+      value: stats.pendingResolutions,
       icon: AlertCircle,
       color: "from-amber-500 to-orange-500",
       shadow: "shadow-amber-500/25",
@@ -76,7 +76,7 @@ export const WardenDashboard = () => {
     },
     {
       label: "In Progress",
-      value: stats.inProgressComplaints,
+      value: stats.inProgressResolutions,
       icon: Clock,
       color: "from-violet-500 to-purple-600",
       shadow: "shadow-violet-500/25",
@@ -116,9 +116,9 @@ export const WardenDashboard = () => {
     }
   };
 
-  // Calculate complaint resolution rate
-  const resolutionRate = stats.totalComplaints > 0
-    ? Math.round(((stats.resolvedComplaints + stats.rejectedComplaints) / stats.totalComplaints) * 100)
+  // Calculate resolution resolution rate
+  const resolutionRate = stats.totalResolutions > 0
+    ? Math.round(((stats.resolvedResolutions + stats.rejectedResolutions) / stats.totalResolutions) * 100)
     : 0;
 
   return (
@@ -132,7 +132,7 @@ export const WardenDashboard = () => {
             </div>
             Warden Dashboard
           </h1>
-          <p className="text-slate-600 mt-2">Monitor students and manage complaints for {sectionLabel}</p>
+          <p className="text-slate-600 mt-2">Monitor students and manage resolutions for {sectionLabel}</p>
         </div>
       </div>
 
@@ -154,7 +154,7 @@ export const WardenDashboard = () => {
         ))}
       </div>
 
-      {/* Middle Row — Attendance Summary + Complaint Stats */}
+      {/* Middle Row — Attendance Summary + Resolution Stats */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Attendance Overview */}
         <Card>
@@ -198,15 +198,15 @@ export const WardenDashboard = () => {
           </div>
         </Card>
 
-        {/* Complaint Resolution Stats */}
+        {/* Resolution Resolution Stats */}
         <Card>
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-violet-600" />
-              Complaint Overview
+              Resolution Overview
             </h2>
             <span className="text-sm font-medium text-slate-500">
-              Total: {stats.totalComplaints}
+              Total: {stats.totalResolutions}
             </span>
           </div>
 
@@ -219,11 +219,11 @@ export const WardenDashboard = () => {
             <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden flex">
               <div
                 className="h-3 bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-700"
-                style={{ width: `${stats.totalComplaints > 0 ? (stats.resolvedComplaints / stats.totalComplaints) * 100 : 0}%` }}
+                style={{ width: `${stats.totalResolutions > 0 ? (stats.resolvedResolutions / stats.totalResolutions) * 100 : 0}%` }}
               />
               <div
                 className="h-3 bg-gradient-to-r from-red-400 to-red-500 transition-all duration-700"
-                style={{ width: `${stats.totalComplaints > 0 ? (stats.rejectedComplaints / stats.totalComplaints) * 100 : 0}%` }}
+                style={{ width: `${stats.totalResolutions > 0 ? (stats.rejectedResolutions / stats.totalResolutions) * 100 : 0}%` }}
               />
             </div>
           </div>
@@ -231,10 +231,10 @@ export const WardenDashboard = () => {
           {/* Status breakdown */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Pending", value: stats.pendingComplaints, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-              { label: "In Progress", value: stats.inProgressComplaints, icon: Clock, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-              { label: "Resolved", value: stats.resolvedComplaints, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-              { label: "Rejected", value: stats.rejectedComplaints, icon: XCircle, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
+              { label: "Pending", value: stats.pendingResolutions, icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+              { label: "In Progress", value: stats.inProgressResolutions, icon: Clock, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+              { label: "Resolved", value: stats.resolvedResolutions, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+              { label: "Rejected", value: stats.rejectedResolutions, icon: XCircle, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
             ].map((item, i) => (
               <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${item.bg} border ${item.border}`}>
                 <item.icon className={`w-5 h-5 ${item.color} flex-shrink-0`} />
@@ -248,16 +248,16 @@ export const WardenDashboard = () => {
         </Card>
       </div>
 
-      {/* Weekly Complaint Trend */}
-      {stats.weeklyComplaints && (
+      {/* Weekly Resolution Trend */}
+      {stats.weeklyResolutions && (
         <Card>
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-5">
             <TrendingUp className="w-5 h-5 text-indigo-600" />
-            Weekly Complaint Trend
+            Weekly Resolution Trend
           </h2>
           <div className="flex items-end justify-between gap-2 h-40">
-            {stats.weeklyComplaints.map((day, i) => {
-              const maxVal = Math.max(...stats.weeklyComplaints.map(d => Math.max(d.new, d.resolved)), 1);
+            {stats.weeklyResolutions.map((day, i) => {
+              const maxVal = Math.max(...stats.weeklyResolutions.map(d => Math.max(d.new, d.resolved)), 1);
               const newH = (day.new / maxVal) * 100;
               const resolvedH = (day.resolved / maxVal) * 100;
               return (
@@ -296,46 +296,46 @@ export const WardenDashboard = () => {
         </Card>
       )}
 
-      {/* Recent Complaints */}
+      {/* Recent Resolutions */}
       <Card>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-rose-500" />
-            Recent Complaints
+            Recent Resolutions
           </h2>
           <button
-            onClick={() => navigate('/warden/complaints')}
+            onClick={() => navigate('/warden/resolutions')}
             className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors"
           >
             View All <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
-        {stats.recentComplaints.length === 0 ? (
+        {stats.recentResolutions.length === 0 ? (
           <div className="text-center py-8">
             <CheckCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">No complaints yet</p>
+            <p className="text-slate-500">No resolutions yet</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {stats.recentComplaints.map((complaint) => (
+            {stats.recentResolutions.map((resolution) => (
               <div
-                key={complaint.id}
+                key={resolution.id}
                 className="flex items-start gap-4 p-4 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all duration-200 cursor-pointer group"
-                onClick={() => navigate('/warden/complaints')}
+                onClick={() => navigate('/warden/resolutions')}
               >
-                <span className="text-2xl flex-shrink-0 mt-0.5">{getCategoryIcon(complaint.category)}</span>
+                <span className="text-2xl flex-shrink-0 mt-0.5">{getCategoryIcon(resolution.category)}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-slate-900">{complaint.studentName}</span>
+                    <span className="font-semibold text-slate-900">{resolution.studentName}</span>
                     <span className="text-xs text-slate-400">•</span>
-                    <span className="text-xs text-slate-500">Room {complaint.studentRoom}</span>
+                    <span className="text-xs text-slate-500">Room {resolution.studentRoom}</span>
                   </div>
-                  <p className="text-sm text-slate-600 mt-1 truncate">{complaint.description}</p>
-                  <p className="text-xs text-slate-400 mt-1">{complaint.date}</p>
+                  <p className="text-sm text-slate-600 mt-1 truncate">{resolution.description}</p>
+                  <p className="text-xs text-slate-400 mt-1">{resolution.date}</p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getStatusColor(complaint.status)}`}>
-                  {complaint.status}
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getStatusColor(resolution.status)}`}>
+                  {resolution.status}
                 </span>
               </div>
             ))}

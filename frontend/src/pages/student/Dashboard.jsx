@@ -37,6 +37,10 @@ export const Dashboard = () => {
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const { location, error: geoError, isLoading: geoLoading, refreshLocation } = useGeolocation();
   const { success, error } = useToast();
+  const isInsideCampus = location?.type === "Inside";
+  const campusStatusMessage = isInsideCampus
+    ? "Inside SISTec campus area"
+    : "Outside SISTec campus area";
 
   // Compute window status and countdown every second
   const computeTimeInfo = useCallback(() => {
@@ -132,8 +136,8 @@ export const Dashboard = () => {
       error("Location not available");
       return;
     }
-    if (location.type === "Outside") {
-      error("You are outside the hostel premises. Move closer to mark attendance.");
+    if (!isInsideCampus) {
+      error("You are outside the SISTec campus area. Move closer to mark attendance.");
       return;
     }
 
@@ -210,6 +214,31 @@ export const Dashboard = () => {
         <p className="text-slate-600 mt-2 text-lg">Welcome back! Here's your attendance overview.</p>
       </div>
 
+      {location && !geoError && (
+        <div className="animate-slide-in-up rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-primary-50 p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Campus Area Check
+              </p>
+              <h2 className={`mt-2 text-2xl font-bold ${isInsideCampus ? "text-green-700" : "text-red-700"}`}>
+                {campusStatusMessage}
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Live geofence status based on your current device location.
+              </p>
+            </div>
+            <div className={`rounded-2xl p-3 ${isInsideCampus ? "bg-green-100" : "bg-red-100"}`}>
+              {isInsideCampus ? (
+                <MapPin className="h-7 w-7 text-green-600" />
+              ) : (
+                <MapPinOff className="h-7 w-7 text-red-600" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* GPS Error Banner */}
       {geoError && (
         <div className="animate-slide-in-up bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
@@ -247,10 +276,10 @@ export const Dashboard = () => {
                 <div>
                   <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Geolocation Status</p>
                   <h3 className="text-3xl font-bold text-slate-900 mt-2">
-                    {location?.type || "Unknown"}
+                    {location ? campusStatusMessage : "Unknown"}
                   </h3>
                 </div>
-                {location?.type === "Inside" ? (
+                {isInsideCampus ? (
                   <div className="p-3 bg-green-100/50 rounded-2xl">
                     <MapPin className="w-8 h-8 text-green-600" />
                   </div>
@@ -261,7 +290,7 @@ export const Dashboard = () => {
                 )}
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-slate-100/50">
-                <span className="text-sm text-slate-600">Distance from hostel</span>
+                <span className="text-sm text-slate-600">Distance from campus center</span>
                 <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600">
                   {location?.distanceDisplay || "N/A"}
                 </span>
@@ -365,7 +394,7 @@ export const Dashboard = () => {
         <Button
           onClick={handleMarkAttendance}
           isLoading={isMarkingAttendance}
-          disabled={!location || location.type === "Outside" || !!geoError || !timeInfo.isOpen}
+          disabled={!location || !isInsideCampus || !!geoError || !timeInfo.isOpen}
           size="lg"
           className={`flex-1 text-lg shadow-xl ${timeInfo.isOpen ? 'shadow-primary-500/20' : 'shadow-slate-300/20 !bg-slate-400 cursor-not-allowed'}`}
         >
@@ -375,8 +404,8 @@ export const Dashboard = () => {
             "Marking Attendance..."
           ) : geoError ? (
             "Location Unavailable"
-          ) : location?.type === "Outside" ? (
-            `Outside Hostel (${location.distanceDisplay}) — Cannot Mark`
+          ) : !isInsideCampus ? (
+            `Outside SISTec Campus (${location.distanceDisplay}) - Cannot Mark`
           ) : (
             <><CheckCircle className="w-5 h-5 mr-2" /> Mark Attendance</>
           )}
