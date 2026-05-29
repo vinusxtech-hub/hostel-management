@@ -13,7 +13,6 @@ export const AdminStudents = () => {
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
   const [buildingFilter, setBuildingFilter] = useState("all");
 
   const [showModal, setShowModal] = useState(false);
@@ -155,15 +154,6 @@ export const AdminStudents = () => {
     setStudentDetails(null);
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "Present": return "bg-green-100 text-green-700";
-      case "Late": return "bg-yellow-100 text-yellow-700";
-      case "On Leave": return "bg-blue-100 text-blue-700";
-      default: return "bg-red-100 text-red-700";
-    }
-  };
-
   const getResolutionStatusColor = (status) => {
     switch (status) {
       case "Resolved": return "bg-emerald-100 text-emerald-700";
@@ -196,11 +186,8 @@ export const AdminStudents = () => {
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
                          s.room.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === "all" || 
-                         (filter === "inside" && s.status === "Inside") ||
-                         (filter === "outside" && s.status === "Outside");
     const matchesBuilding = buildingFilter === "all" || s.building === buildingFilter;
-    return matchesSearch && matchesFilter && matchesBuilding;
+    return matchesSearch && matchesBuilding;
   });
 
   if (isLoading) {
@@ -249,18 +236,6 @@ export const AdminStudents = () => {
               />
             </div>
             <div className="flex gap-2">
-              {["all", "inside", "outside"].map((f) => (
-                <Button
-                  key={f}
-                  variant={filter === f ? "primary" : "secondary"}
-                  onClick={() => setFilter(f)}
-                  size="sm"
-                >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </Button>
-              ))}
-            </div>
-            <div className="flex gap-2">
               {["all", "A", "B", "C"].map((b) => (
                 <Button
                   key={b}
@@ -286,14 +261,13 @@ export const AdminStudents = () => {
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Building</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Room</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Attendance</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Status</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-8 text-slate-600">
+                    <td colSpan="6" className="text-center py-8 text-slate-600">
                       No students found
                     </td>
                   </tr>
@@ -320,18 +294,8 @@ export const AdminStudents = () => {
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                          student.status === "Inside"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          <MapPin className="w-4 h-4" />
-                          {student.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
                         <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openStudentDetails(student); }}>
-                          <Eye className="w-3.5 h-3.5 mr-1.5" /> View Details
+                          <Eye className="w-3.5 h-3.5 mr-1.5" /> View Profile
                         </Button>
                       </td>
                     </tr>
@@ -343,17 +307,11 @@ export const AdminStudents = () => {
         </Card>
 
         {/* Summary Stats */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { label: "Total Students", value: students.length },
-            { label: "Inside Hostel", value: students.filter(s => s.status === "Inside").length },
-            { label: "Outside Hostel", value: students.filter(s => s.status === "Outside").length }
-          ].map((stat, idx) => (
-            <Card key={idx}>
-              <p className="text-sm text-slate-600 font-medium">{stat.label}</p>
-              <p className="text-3xl font-bold text-slate-900 mt-2">{stat.value}</p>
-            </Card>
-          ))}
+        <div className="grid md:grid-cols-1 gap-6">
+          <Card>
+            <p className="text-sm text-slate-600 font-medium">Total Students</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2">{students.length}</p>
+          </Card>
         </div>
 
         {/* Add Student Modal */}
@@ -626,9 +584,6 @@ export const AdminStudents = () => {
                     }`}>{studentDetails.student.hostelSection === 'boys' ? 'Boys Hostel' : 'Girls Hostel'}</span>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
                       Building {studentDetails.student.building || 'N/A'}
-                    </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusBadge(studentDetails.student.todayStatus)}`}>
-                      {studentDetails.student.todayStatus}
                     </span>
                   </div>
                 </div>
