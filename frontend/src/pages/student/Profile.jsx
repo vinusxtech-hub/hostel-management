@@ -199,12 +199,12 @@ export const Profile = () => {
     ? [
         { label: "Hostel Section", value: hostelSectionLabel, subtext: "Current hostel assignment", gradient: "from-sky-500 to-cyan-500" },
         { label: "Room", value: user?.room || "Not set", subtext: "Hostel room identity", gradient: "from-indigo-500 to-blue-500" },
-        { label: "Department", value: user?.department || "Not set", subtext: "Academic department", gradient: "from-emerald-500 to-teal-500" }
+        { label: "Department", value: user?.department || "Not set", gradient: "from-emerald-500 to-teal-500" }
       ]
     : [
         { label: "Hostel Section", value: hostelSectionLabel, subtext: "Current section ownership", gradient: "from-violet-500 to-indigo-500" },
         { label: "Assigned Hostel", value: hostelSectionLabel, subtext: "Current section ownership", gradient: "from-fuchsia-500 to-violet-500" },
-        { label: "Status", value: "Active", subtext: "Account availability", gradient: "from-emerald-500 to-green-500" }
+        { label: "Status", value: "Active", gradient: "from-emerald-500 to-green-500" }
       ];
 
   const contactTiles = profileConfig.showStudentFields
@@ -225,11 +225,6 @@ export const Profile = () => {
       <section className={`overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br ${theme.surface} shadow-xl shadow-slate-200/60`}>
         <div className="p-6 sm:p-8">
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/90 bg-white/85 px-3 py-1 text-sm font-medium text-slate-700 shadow-sm">
-              <Sparkles className={`h-4 w-4 ${theme.accentSoft}`} />
-              {profileConfig.badge}
-            </div>
-
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className={`flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-gradient-to-br ${theme.avatar} text-2xl font-bold text-white shadow-lg shadow-slate-400/30`}>
                 {getInitials(user?.name)}
@@ -311,42 +306,6 @@ export const Profile = () => {
           </div>
         </Card>
       </div>
-
-      <Card className="space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-slate-100 p-2 text-slate-700">
-            <CalendarDays className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Account Snapshot</h2>
-            <p className="text-sm text-slate-500">A quick summary of how this account appears in the hostel system.</p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <InfoTile
-            icon={CalendarDays}
-            label="Created"
-            value={formatDate(accountStartDate)}
-            hint="Initial account start date"
-            toneClass="bg-slate-50"
-          />
-          <InfoTile
-            icon={Shield}
-            label="Role access"
-            value={roleLabel}
-            hint={profileConfig.showStudentFields ? "Student self-service access" : "Operational access level"}
-            toneClass="bg-slate-50"
-          />
-          <InfoTile
-            icon={Building}
-            label="Section on file"
-            value={hostelSectionLabel}
-            hint={profileConfig.showStudentFields ? "Linked to your hostel assignment" : "Current responsibility section"}
-            toneClass="bg-slate-50"
-          />
-        </div>
-      </Card>
 
       {profileConfig.canEdit && (
         <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Edit Profile" className="max-w-2xl">

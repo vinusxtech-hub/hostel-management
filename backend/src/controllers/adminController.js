@@ -10,6 +10,12 @@ const normalizeHostelSection = (value) => {
   return '';
 };
 
+const normalizeBuilding = (value) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (['A', 'B', 'C'].includes(normalized)) return normalized;
+  return '';
+};
+
 // @desc    Get dashboard stats
 // @route   GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
@@ -223,7 +229,26 @@ exports.addStudent = async (req, res) => {
     }
 
     const normalizedSection = normalizeHostelSection(hostelSection);
-    const normalizedBuilding = building || 'A';
+    const normalizedBuilding = String(building || '').trim().toUpperCase();
+
+    // Enforce building rules: boys -> A or B; girls -> C only
+    if (normalizedSection === 'boys') {
+      const allowed = ['A', 'B'];
+      const pick = normalizedBuilding || 'A';
+      if (!allowed.includes(pick)) {
+        return res.status(400).json({ error: 'Boys hostel students must be assigned to Building A or B' });
+      }
+      // use validated building
+      req.body.building = pick;
+    }
+
+    if (normalizedSection === 'girls') {
+      const pick = normalizedBuilding || 'C';
+      if (pick !== 'C') {
+        return res.status(400).json({ error: 'Girls hostel students must be assigned to Building C' });
+      }
+      req.body.building = pick;
+    }
 
     const student = await User.create({
       name,
@@ -231,7 +256,7 @@ exports.addStudent = async (req, res) => {
       password: password || 'password123',
       role: 'student',
       hostelSection: normalizedSection,
-      building: normalizedBuilding,
+      building: req.body.building || '',
       room: room || '',
       department: department || '',
       phone: phone || ''
@@ -319,7 +344,25 @@ exports.bulkImportStudents = async (req, res) => {
         }
 
         const importedSection = normalizeHostelSection(row.hostelsection || row.section || row.gender);
-        const importedBuilding = row.building || 'A';
+        let importedBuilding = String(row.building || '').trim().toUpperCase();
+
+        // Validate building rules per section
+        if (importedSection === 'boys') {
+          if (!importedBuilding) importedBuilding = 'A';
+          if (!['A', 'B'].includes(importedBuilding)) {
+            results.failed++;
+            results.errors.push({ row: rowNum, name, reason: `Invalid building for boys: ${importedBuilding}` });
+            continue;
+          }
+        }
+        if (importedSection === 'girls') {
+          if (!importedBuilding) importedBuilding = 'C';
+          if (importedBuilding !== 'C') {
+            results.failed++;
+            results.errors.push({ row: rowNum, name, reason: `Invalid building for girls: ${importedBuilding}` });
+            continue;
+          }
+        }
 
         const student = await User.create({
           name,
@@ -573,9 +616,10 @@ exports.getWardens = async (req, res) => {
     const wardens = await User.find({ role: 'warden' }).sort({ name: 1 });
 
     const result = await Promise.all(wardens.map(async (warden) => {
-      // Count students in their hostel section
-      const sectionFilter = warden.hostelSection ? { hostelSection: warden.hostelSection } : {};
-      const studentCount = await User.countDocuments({ role: 'student', ...sectionFilter });
+      const sectionFilter = warden.hostelSection ? { hostelSection: normalizeHostelSection(warden.hostelSection) } : {};
+      const buildingFilter = normalizeBuilding(warden.building) ? { building: normalizeBuilding(warden.building) } : {};
+      const studentFilter = { role: 'student', ...sectionFilter, ...buildingFilter };
+      const studentCount = await User.countDocuments(studentFilter);
 
       // Count resolutions resolved/handled by this warden
       const resolutionsResolved = await Resolution.countDocuments({ resolvedBy: warden._id, status: 'Resolved' });
@@ -584,7 +628,7 @@ exports.getWardens = async (req, res) => {
       const totalHandled = resolutionsResolved + resolutionsRejected + resolutionsInProgress;
 
       // Count section resolutions (all resolutions from students in their section)
-      const sectionStudentIds = await User.find({ role: 'student', ...sectionFilter }).distinct('_id');
+      const sectionStudentIds = await User.find(studentFilter).distinct('_id');
       const sectionResolutions = sectionStudentIds.length
         ? await Resolution.countDocuments({ userId: { $in: sectionStudentIds } })
         : 0;
@@ -602,11 +646,9 @@ exports.getWardens = async (req, res) => {
 
       // Determine buildings managed
       const buildings = warden.hostelSection ? ['A', 'B', 'C'] : [];
-
-      // Per-building student counts (filtered by warden's section)
       const buildingCounts = {};
       for (const b of buildings) {
-        buildingCounts[b] = await User.countDocuments({ role: 'student', building: b, ...sectionFilter });
+        buildingCounts[b] = await User.countDocuments({ role: 'student', building: b, ...sectionFilter, ...buildingFilter });
       }
 
       return {
@@ -615,6 +657,7 @@ exports.getWardens = async (req, res) => {
         email: warden.email,
         phone: warden.phone || 'N/A',
         hostelSection: warden.hostelSection || '',
+        building: normalizeBuilding(warden.building) || '',
         department: warden.department || '',
         joinedAt: warden.createdAt,
         buildings,
@@ -661,7 +704,9 @@ exports.getWardenDetails = async (req, res) => {
 
     // Section stats
     const sectionFilter = warden.hostelSection ? { hostelSection: warden.hostelSection } : {};
-    const studentCount = await User.countDocuments({ role: 'student', ...sectionFilter });
+    const buildingFilter = normalizeBuilding(warden.building) ? { building: normalizeBuilding(warden.building) } : {};
+    const studentFilter = { role: 'student', ...sectionFilter, ...buildingFilter };
+    const studentCount = await User.countDocuments(studentFilter);
     const sectionStudentIds = await User.find({ role: 'student', ...sectionFilter }).distinct('_id');
 
     // Resolution stats

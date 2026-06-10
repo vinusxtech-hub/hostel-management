@@ -81,10 +81,14 @@ export const AdminWardens = () => {
     return "bg-slate-50 text-slate-700 border-slate-200";
   };
 
-  const getSectionLabel = (section) => {
-    if (section === "boys") return "Boys Hostel";
-    if (section === "girls") return "Girls Hostel";
-    return "Unassigned";
+  const getSectionLabel = (section, building) => {
+    if (section === "boys") {
+      return building ? `Boys Hostel · Building ${building}` : "Boys Hostel";
+    }
+    if (section === "girls") {
+      return building ? `Girls Hostel · Building ${building}` : "Girls Hostel";
+    }
+    return building ? `Building ${building}` : "Unassigned";
   };
 
   const getStatusColor = (status) => {
@@ -186,7 +190,7 @@ export const AdminWardens = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-lg font-bold text-slate-900">{warden.name}</h3>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getSectionBg(warden.hostelSection)}`}>
-                      {getSectionLabel(warden.hostelSection)}
+                      {getSectionLabel(warden.hostelSection, warden.building)}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 mt-1.5 text-sm text-slate-500">
@@ -274,7 +278,7 @@ export const AdminWardens = () => {
                 <h3 className="text-xl font-bold text-slate-900">{wardenDetails.profile.name}</h3>
                 <div className="flex items-center gap-3 mt-1">
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getSectionBg(wardenDetails.profile.hostelSection)}`}>
-                    {getSectionLabel(wardenDetails.profile.hostelSection)}
+                    {getSectionLabel(wardenDetails.profile.hostelSection, wardenDetails.profile.building)}
                   </span>
                   <span className="text-sm text-slate-500 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />

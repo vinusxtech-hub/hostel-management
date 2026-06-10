@@ -17,15 +17,22 @@ const normalizeHostelSection = (value) => {
   return '';
 };
 
-const canWardenAccessStudent = (wardenSection, studentSection) => {
-  if (!wardenSection) return true;
-  return normalizeHostelSection(studentSection) === wardenSection;
+const normalizeBuilding = (value) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (['A', 'B', 'C'].includes(normalized)) return normalized;
+  return '';
 };
 
-const getStudentIdsForSection = async (wardenSection) => {
-  const students = await User.find({ role: 'student' }).select('_id hostelSection');
+const canWardenAccessStudent = (wardenSection, wardenBuilding, studentSection, studentBuilding) => {
+  if (wardenSection && normalizeHostelSection(studentSection) !== wardenSection) return false;
+  if (wardenBuilding && normalizeBuilding(studentBuilding) !== wardenBuilding) return false;
+  return true;
+};
+
+const getStudentIdsForSection = async (wardenSection, wardenBuilding) => {
+  const students = await User.find({ role: 'student' }).select('_id hostelSection building');
   return students
-    .filter((student) => canWardenAccessStudent(wardenSection, student.hostelSection))
+    .filter((student) => canWardenAccessStudent(wardenSection, wardenBuilding, student.hostelSection, student.building))
     .map((student) => student._id);
 };
 

@@ -49,8 +49,17 @@ export const AdminStudents = () => {
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
+    // Client-side validation for building vs section
+    const section = newStudentData.hostelSection;
+    const building = newStudentData.building;
+    const allowedForSection = section === 'boys' ? ['A','B'] : section === 'girls' ? ['C'] : ['A','B','C'];
+
     if (!newStudentData.name || !newStudentData.room || !newStudentData.email || !newStudentData.hostelSection || !newStudentData.building) {
       error("Please fill all fields");
+      return;
+    }
+    if (!allowedForSection.includes(building)) {
+      error(`Selected building is not allowed for the chosen hostel section.`);
       return;
     }
     setIsSubmitting(true);
@@ -172,7 +181,7 @@ export const AdminStudents = () => {
     // Create a sample CSV template for download
     const headers = "Name,Email,HostelSection,Building,Room,Department,Phone,Password";
     const sample1 = "Anshu,anshu@example.com,boys,A,A-101,Computer Science,9876543210,password123";
-    const sample2 = "Jane Smith,jane@example.com,girls,B,B-205,AIDS,9123456789,password123";
+    const sample2 = "Jane Smith,jane@example.com,girls,C,C-205,AIDS,9123456789,password123";
     const csvContent = `${headers}\n${sample1}\n${sample2}`;
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -189,6 +198,8 @@ export const AdminStudents = () => {
     const matchesBuilding = buildingFilter === "all" || s.building === buildingFilter;
     return matchesSearch && matchesBuilding;
   });
+
+  const allowedBuildings = newStudentData.hostelSection === 'boys' ? ['A','B'] : newStudentData.hostelSection === 'girls' ? ['C'] : ['A','B','C'];
 
   if (isLoading) {
     return (
@@ -351,9 +362,9 @@ export const AdminStudents = () => {
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 bg-white text-sm"
               >
                 <option value="">Select building</option>
-                <option value="A">Building A</option>
-                <option value="B">Building B</option>
-                <option value="C">Building C</option>
+                {allowedBuildings.map(b => (
+                  <option key={b} value={b}>Building {b}</option>
+                ))}
               </select>
             </div>
             <Input

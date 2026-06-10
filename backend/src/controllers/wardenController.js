@@ -10,9 +10,19 @@ const normalizeHostelSection = (value) => {
   return '';
 };
 
-const getHostelSectionFilter = (user) => {
+const normalizeBuilding = (value) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (['A', 'B', 'C'].includes(normalized)) return normalized;
+  return '';
+};
+
+const getWardenStudentFilter = (user) => {
+  const filter = {};
   const hostelSection = normalizeHostelSection(user?.hostelSection);
-  return hostelSection ? { hostelSection } : {};
+  if (hostelSection) filter.hostelSection = hostelSection;
+  const building = normalizeBuilding(user?.building);
+  if (building) filter.building = building;
+  return filter;
 };
 
 // @desc    Get warden dashboard stats
@@ -20,7 +30,7 @@ const getHostelSectionFilter = (user) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const studentFilter = { role: 'student', ...getHostelSectionFilter(req.user) };
+    const studentFilter = { role: 'student', ...getWardenStudentFilter(req.user) };
     const studentIds = await User.find(studentFilter).distinct('_id');
     const totalStudents = studentIds.length;
     const todayRecords = await Attendance.find({ date: today, userId: { $in: studentIds } });
@@ -128,7 +138,7 @@ exports.getDashboardStats = async (req, res) => {
 // @route   GET /api/warden/students
 exports.getStudents = async (req, res) => {
   try {
-    const students = await User.find({ role: 'student', ...getHostelSectionFilter(req.user) }).sort({ name: 1 });
+    const students = await User.find({ role: 'student', ...getWardenStudentFilter(req.user) }).sort({ name: 1 });
     const today = new Date().toISOString().split('T')[0];
 
     const result = await Promise.all(students.map(async (student) => {
@@ -177,11 +187,13 @@ exports.getStudentDetails = async (req, res) => {
     if (!student || student.role !== 'student') {
       return res.status(404).json({ error: 'Student not found' });
     }
-    if (
-      normalizeHostelSection(req.user.hostelSection) &&
-      student.hostelSection !== normalizeHostelSection(req.user.hostelSection)
-    ) {
+    const normalizedSection = normalizeHostelSection(req.user.hostelSection);
+    const normalizedBuilding = normalizeBuilding(req.user.building);
+    if (normalizedSection && student.hostelSection !== normalizedSection) {
       return res.status(403).json({ error: 'Access denied for this hostel section' });
+    }
+    if (normalizedBuilding && student.building !== normalizedBuilding) {
+      return res.status(403).json({ error: 'Access denied for this building' });
     }
 
     // Get attendance history (last 30 days)
@@ -282,7 +294,7 @@ exports.getResolutions = async (req, res) => {
     if (status && status !== 'All') filter.status = status;
     if (category && category !== 'All') filter.category = category;
 
-    const studentIds = await User.find({ role: 'student', ...getHostelSectionFilter(req.user) }).distinct('_id');
+    const studentIds = await User.find({ role: 'student', ...getWardenStudentFilter(req.user) }).distinct('_id');
     filter.userId = studentIds.length ? { $in: studentIds } : null;
 
     const resolutions = await Resolution.find(filter)
@@ -338,11 +350,13 @@ exports.updateResolution = async (req, res) => {
     if (!existingResolution) {
       return res.status(404).json({ error: 'Resolution not found' });
     }
-    if (
-      normalizeHostelSection(req.user.hostelSection) &&
-      existingResolution.userId?.hostelSection !== normalizeHostelSection(req.user.hostelSection)
-    ) {
+    const normalizedSection = normalizeHostelSection(req.user.hostelSection);
+    const normalizedBuilding = normalizeBuilding(req.user.building);
+    if (normalizedSection && existingResolution.userId?.hostelSection !== normalizedSection) {
       return res.status(403).json({ error: 'Access denied for this hostel section' });
+    }
+    if (normalizedBuilding && existingResolution.userId?.building !== normalizedBuilding) {
+      return res.status(403).json({ error: 'Access denied for this building' });
     }
 
     const resolution = await Resolution.findByIdAndUpdate(

@@ -42,6 +42,15 @@ const ensureDefaultWardens = async () => {
       phone: '+91-9876000111'
     },
     {
+      name: 'Rohit Kumar',
+      email: 'warden.boys.c@test.com',
+      password: 'password',
+      role: 'warden',
+      hostelSection: 'boys',
+      building: 'C',
+      phone: '+91-9876000333'
+    },
+    {
       name: 'Kavita Singh',
       email: 'warden.girls@test.com',
       password: 'password',
@@ -62,6 +71,7 @@ const ensureDefaultWardens = async () => {
     existing.name = wardenData.name;
     existing.role = 'warden';
     existing.hostelSection = wardenData.hostelSection;
+    existing.building = wardenData.building || '';
     existing.phone = wardenData.phone;
     await existing.save();
   }
@@ -101,6 +111,15 @@ const autoSeed = async () => {
       phone: '+91-9876000111'
     },
     {
+      name: 'Rohit Kumar',
+      email: 'warden.boys.c@test.com',
+      password: 'password',
+      role: 'warden',
+      hostelSection: 'boys',
+      building: 'C',
+      phone: '+91-9876000333'
+    },
+    {
       name: 'Kavita Singh',
       email: 'warden.girls@test.com',
       password: 'password',
@@ -110,7 +129,6 @@ const autoSeed = async () => {
     }
   ]);
 
-  // Create students
   const studentsData = [
     { name: 'Ankit Kumar', email: 'student@test.com', password: 'password', hostelSection: 'boys', building: 'A', room: 'A-101', phone: '+91-7972302340', parentPhone: '+91-7884521069', address: '123 College Ave, University Town', department: 'Computer Science' },
     { name: 'Kunal Raj', email: 'kunal@test.com', password: 'password', hostelSection: 'boys', building: 'B', room: 'B-205', phone: '+91-9876543210', department: 'Computer Science' },
