@@ -164,6 +164,20 @@ export const api = {
   
   // Admin APIs
   admin: {
+    getSettings: async () => {
+      const response = await fetch(`${BASE_URL}/admin/settings`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    updateSettings: async (data) => {
+      const response = await fetch(`${BASE_URL}/admin/settings`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
     getDashboardStats: async () => {
       const response = await fetch(`${BASE_URL}/admin/stats`, {
         headers: authHeaders(),

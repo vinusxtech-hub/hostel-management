@@ -1,6 +1,7 @@
 const Attendance = require('../models/Attendance');
 const Resolution = require('../models/Resolution');
 const User = require('../models/User');
+const Settings = require('../models/Settings');
 
 // Haversine formula to calculate distance in km
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
@@ -38,9 +39,20 @@ exports.markAttendance = async (req, res) => {
       return res.status(400).json({ error: 'Location coordinates are required' });
     }
 
-    const hostelLat = parseFloat(process.env.HOSTEL_LAT) || 28.6139;
-    const hostelLng = parseFloat(process.env.HOSTEL_LNG) || 77.2090;
-    const radiusMeters = parseInt(process.env.GEOFENCE_RADIUS_METERS) || 200;
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({
+        checkInTime: process.env.CHECKIN_TIME || '20:00',
+        cutoffTime: process.env.CUTOFF_TIME || '22:00',
+        geofenceRadius: parseInt(process.env.GEOFENCE_RADIUS_METERS) || 200,
+        campusLatitude: parseFloat(process.env.HOSTEL_LAT) || 23.2815,
+        campusLongitude: parseFloat(process.env.HOSTEL_LNG) || 77.4562
+      });
+    }
+
+    const hostelLat = settings.campusLatitude;
+    const hostelLng = settings.campusLongitude;
+    const radiusMeters = settings.geofenceRadius;
 
     // Calculate distance
     const distance = getDistanceFromLatLonInKm(latitude, longitude, hostelLat, hostelLng);
@@ -71,9 +83,14 @@ exports.markAttendance = async (req, res) => {
 
     // Determine status based on time
     const now = new Date();
-    const hours = now.getHours();
-    const timeStr = `${hours.toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    const status = hours >= 22 ? 'Late' : 'Present';
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    // Parse cutoff time (e.g. "22:00")
+    const [cutoffH, cutoffM] = settings.cutoffTime.split(':').map(Number);
+    const cutoffMinutes = cutoffH * 60 + cutoffM;
+    
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const status = currentMinutes >= cutoffMinutes ? 'Late' : 'Present';
 
     const newRecord = await Attendance.create({
       userId: req.user._id,

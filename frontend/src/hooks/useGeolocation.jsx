@@ -17,10 +17,14 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-export const useGeolocation = () => {
+export const useGeolocation = (campusLat, campusLng, radiusMeters) => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const targetLat = campusLat || parseFloat(import.meta.env.VITE_HOSTEL_LAT) || 23.2815;
+  const targetLng = campusLng || parseFloat(import.meta.env.VITE_HOSTEL_LNG) || 77.4562;
+  const radiusKm = (radiusMeters || parseInt(import.meta.env.VITE_GEOFENCE_RADIUS_METERS) || 200) / 1000;
 
   const checkLocation = useCallback(() => {
     setIsLoading(true);
@@ -35,8 +39,8 @@ export const useGeolocation = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        const distance = getDistanceFromLatLonInKm(latitude, longitude, HOSTEL_LAT, HOSTEL_LNG);
-        const type = distance <= RADIUS_KM ? "Inside" : "Outside";
+        const distance = getDistanceFromLatLonInKm(latitude, longitude, targetLat, targetLng);
+        const type = distance <= radiusKm ? "Inside" : "Outside";
 
         setLocation({
           latitude,
@@ -65,11 +69,11 @@ export const useGeolocation = () => {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, []);
+  }, [targetLat, targetLng, radiusKm]);
 
   useEffect(() => {
     checkLocation();
   }, [checkLocation]);
 
-  return { location, error, isLoading, refreshLocation: checkLocation, hostelLat: HOSTEL_LAT, hostelLng: HOSTEL_LNG };
+  return { location, error, isLoading, refreshLocation: checkLocation, hostelLat: targetLat, hostelLng: targetLng };
 };

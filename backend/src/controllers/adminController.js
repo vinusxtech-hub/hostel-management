@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Resolution = require('../models/Resolution');
 const Notice = require('../models/Notice');
+const Settings = require('../models/Settings');
 
 const normalizeHostelSection = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -789,4 +790,51 @@ exports.getWardenDetails = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch warden details' });
   }
 };
+
+// @desc    Get attendance settings
+// @route   GET /api/admin/settings
+// @access  Private/Admin
+exports.getSettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({
+        checkInTime: process.env.CHECKIN_TIME || '20:00',
+        cutoffTime: process.env.CUTOFF_TIME || '22:00',
+        geofenceRadius: parseInt(process.env.GEOFENCE_RADIUS_METERS) || 200,
+        campusLatitude: parseFloat(process.env.HOSTEL_LAT) || 23.2815,
+        campusLongitude: parseFloat(process.env.HOSTEL_LNG) || 77.4562
+      });
+    }
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+};
+
+// @desc    Update attendance settings
+// @route   PUT /api/admin/settings
+// @access  Private/Admin
+exports.updateSettings = async (req, res) => {
+  try {
+    const { checkInTime, cutoffTime, geofenceRadius, campusLatitude, campusLongitude } = req.body;
+
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings({});
+    }
+
+    if (checkInTime !== undefined) settings.checkInTime = checkInTime;
+    if (cutoffTime !== undefined) settings.cutoffTime = cutoffTime;
+    if (geofenceRadius !== undefined) settings.geofenceRadius = Number(geofenceRadius);
+    if (campusLatitude !== undefined) settings.campusLatitude = Number(campusLatitude);
+    if (campusLongitude !== undefined) settings.campusLongitude = Number(campusLongitude);
+
+    await settings.save();
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+};
+
 

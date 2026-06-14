@@ -14,7 +14,8 @@ import {
   Users,
   Megaphone,
   Shield,
-  CalendarOff
+  CalendarOff,
+  Settings
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
@@ -35,6 +36,7 @@ const adminNavigation = [
   { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { name: 'Notices', href: '/admin/notices', icon: Megaphone },
   { name: 'Wardens', href: '/admin/wardens', icon: Shield },
+  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 const wardenNavigation = [

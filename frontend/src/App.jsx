@@ -32,6 +32,7 @@ import { Attendance as AdminAttendance } from "./pages/admin/Attendance";
 import { AdminReports } from "./pages/admin/Reports";
 import { AdminNotices } from "./pages/admin/Notices";
 import { AdminWardens } from "./pages/admin/Wardens";
+import { AdminSettings } from "./pages/admin/Settings";
 
 // Warden Pages
 import { WardenDashboard } from "./pages/warden/Dashboard";
@@ -90,6 +91,7 @@ function AppContent() {
           <Route path="reports" element={<AdminReports />} />
           <Route path="notices" element={<AdminNotices />} />
           <Route path="wardens" element={<AdminWardens />} />
+          <Route path="settings" element={<AdminSettings />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

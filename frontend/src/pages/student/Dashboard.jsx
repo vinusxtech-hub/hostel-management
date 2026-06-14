@@ -35,7 +35,11 @@ export const Dashboard = () => {
   const [settings, setSettings] = useState(null);
   const [timeInfo, setTimeInfo] = useState({ isOpen: false, countdown: 0, progress: 0 });
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
-  const { location, error: geoError, isLoading: geoLoading, refreshLocation } = useGeolocation();
+  const { location, error: geoError, isLoading: geoLoading, refreshLocation } = useGeolocation(
+    settings?.campusLatitude,
+    settings?.campusLongitude,
+    settings?.geofenceRadius
+  );
   const { success, error } = useToast();
   const isInsideCampus = location?.type === "Inside";
   const campusStatusMessage = isInsideCampus
@@ -252,80 +256,105 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Map + Status Grid */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Map View */}
-        <div className="animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-          <Card className="p-0 overflow-hidden">
-            <MapView
-              userLat={location?.latitude}
-              userLng={location?.longitude}
-              distance={location?.distanceDisplay}
-              isInside={location?.type === "Inside"}
-              className="h-[280px]"
-            />
-          </Card>
-        </div>
-
-        {/* Location + Attendance Status */}
-        <div className="space-y-6">
-          {/* Location Status */}
-          <div className="animate-slide-in-up" style={{ animationDelay: '150ms' }}>
-            <Card>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Geolocation Status</p>
-                  <h3 className="text-3xl font-bold text-slate-900 mt-2">
-                    {location ? campusStatusMessage : "Unknown"}
-                  </h3>
+      {/* Status Row — compact 2-col */}
+      <div className="grid grid-cols-2 gap-4 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
+        {/* Geolocation pill */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Geolocation</p>
+              <h3 className={`text-lg font-bold mt-0.5 ${isInsideCampus ? 'text-green-700' : 'text-red-700'}`}>
+                {location ? (isInsideCampus ? '✓ Inside Campus' : '✗ Outside Campus') : 'Detecting...'}
+              </h3>
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                  isInsideCampus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isInsideCampus ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`} />
+                  {location?.distanceDisplay ? `${location.distanceDisplay} from center` : 'Calculating...'}
                 </div>
-                {isInsideCampus ? (
-                  <div className="p-3 bg-green-100/50 rounded-2xl">
-                    <MapPin className="w-8 h-8 text-green-600" />
-                  </div>
-                ) : (
-                  <div className="p-3 bg-red-100/50 rounded-2xl">
-                    <MapPinOff className="w-8 h-8 text-red-600" />
-                  </div>
+                {settings?.geofenceRadius && (
+                  <span className="text-xs text-slate-400">±{settings.geofenceRadius}m</span>
                 )}
               </div>
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100/50">
-                <span className="text-sm text-slate-600">Distance from campus center</span>
-                <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600">
-                  {location?.distanceDisplay || "N/A"}
-                </span>
+            </div>
+            {isInsideCampus ? (
+              <div className="p-2.5 bg-green-100/60 rounded-xl flex-shrink-0">
+                <MapPin className="w-6 h-6 text-green-600" />
               </div>
-            </Card>
+            ) : (
+              <div className="p-2.5 bg-red-100/60 rounded-xl flex-shrink-0">
+                <MapPinOff className="w-6 h-6 text-red-600" />
+              </div>
+            )}
           </div>
+        </Card>
 
-          {/* Today's Attendance Status */}
-          <div className="animate-slide-in-up" style={{ animationDelay: '200ms' }}>
-            <Card>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Today's Attendance</p>
-                  <h3 className="text-3xl font-bold text-slate-900 mt-2">
-                    {attendanceStatus?.status || "Not Marked"}
-                  </h3>
-                </div>
-                {attendanceStatus?.status === "Present" ? (
-                  <div className="p-3 bg-green-100/50 rounded-2xl"><CheckCircle className="w-8 h-8 text-green-600" /></div>
-                ) : attendanceStatus?.status === "Late" ? (
-                  <div className="p-3 bg-yellow-100/50 rounded-2xl"><Clock className="w-8 h-8 text-yellow-600" /></div>
-                ) : (
-                  <div className="p-3 bg-slate-100/50 rounded-2xl"><AlertCircle className="w-8 h-8 text-slate-400" /></div>
-                )}
-              </div>
+        {/* Today's Attendance pill */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Today's Attendance</p>
+              <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                {attendanceStatus?.status || 'Not Marked'}
+              </h3>
               {attendanceStatus?.time && (
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100/50">
-                  <span className="text-sm text-slate-600">Marked at</span>
-                  <span className="text-lg font-bold text-slate-900">{attendanceStatus.time}</span>
-                </div>
+                <p className="text-xs text-slate-500 mt-1.5">Marked at <strong>{attendanceStatus.time}</strong></p>
               )}
-            </Card>
+            </div>
+            {attendanceStatus?.status === 'Present' ? (
+              <div className="p-2.5 bg-green-100/50 rounded-xl flex-shrink-0"><CheckCircle className="w-6 h-6 text-green-600" /></div>
+            ) : attendanceStatus?.status === 'Late' ? (
+              <div className="p-2.5 bg-yellow-100/50 rounded-xl flex-shrink-0"><Clock className="w-6 h-6 text-yellow-600" /></div>
+            ) : (
+              <div className="p-2.5 bg-slate-100/50 rounded-xl flex-shrink-0"><AlertCircle className="w-6 h-6 text-slate-400" /></div>
+            )}
           </div>
-        </div>
+        </Card>
       </div>
+
+      {/* Full-Width Live Location Map */}
+      <div className="animate-slide-in-up" style={{ animationDelay: '150ms' }}>
+        <Card className="p-0 overflow-hidden">
+          {/* Map header bar */}
+          <div className="px-5 py-3 flex items-center justify-between border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-indigo-500" />
+              <p className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Live Location Map</p>
+            </div>
+            <div className="flex items-center gap-4">
+              {location && (
+                <span className="text-xs font-mono text-slate-400">
+                  {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                </span>
+              )}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
+                  Campus Center
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  Your Location
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Map — full width, tall */}
+          <MapView
+            userLat={location?.latitude}
+            userLng={location?.longitude}
+            campusLat={settings?.campusLatitude}
+            campusLng={settings?.campusLongitude}
+            radiusMeters={settings?.geofenceRadius}
+            distance={location?.distanceDisplay}
+            isInside={location?.type === 'Inside'}
+            showGeofence={false}
+            className="h-[420px] w-full"
+          />
+        </Card>
+      </div>
+
 
       {/* Attendance Time Window */}
       <div className="animate-slide-in-up" style={{ animationDelay: '300ms' }}>
@@ -390,22 +419,22 @@ export const Dashboard = () => {
       </div>
 
       {/* Mark Attendance Button */}
-      <div className="flex gap-4 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
+      <div className="flex items-center gap-4 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
         <Button
           onClick={handleMarkAttendance}
           isLoading={isMarkingAttendance}
           disabled={!location || !isInsideCampus || !!geoError || !timeInfo.isOpen}
           size="lg"
-          className={`flex-1 text-lg shadow-xl ${timeInfo.isOpen ? 'shadow-primary-500/20' : 'shadow-slate-300/20 !bg-slate-400 cursor-not-allowed'}`}
+          className={`text-base shadow-xl ${timeInfo.isOpen ? 'shadow-primary-500/20' : 'shadow-slate-300/20 !bg-slate-400 cursor-not-allowed'}`}
         >
           {!timeInfo.isOpen ? (
-            <><Lock className="w-5 h-5 mr-2" /> Attendance Window Closed</>
+            <><Lock className="w-5 h-5 mr-2" /> Window Closed</>
           ) : isMarkingAttendance ? (
-            "Marking Attendance..."
+            "Marking..."
           ) : geoError ? (
             "Location Unavailable"
           ) : !isInsideCampus ? (
-            `Outside SISTec Campus (${location.distanceDisplay}) - Cannot Mark`
+            "Outside Campus"
           ) : (
             <><CheckCircle className="w-5 h-5 mr-2" /> Mark Attendance</>
           )}

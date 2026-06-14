@@ -29,6 +29,10 @@ router.post('/notices', noticeController.createNotice);
 router.put('/notices/:id', noticeController.updateNotice);
 router.delete('/notices/:id', noticeController.deleteNotice);
 
+// Settings routes
+router.get('/settings', adminController.getSettings);
+router.put('/settings', adminController.updateSettings);
+
 // Warden management routes
 router.get('/wardens', adminController.getWardens);
 router.get('/wardens/:id', adminController.getWardenDetails);
