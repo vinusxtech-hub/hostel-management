@@ -47,12 +47,22 @@ const wardenNavigation = [
   { name: 'Notices', href: '/warden/notices', icon: Megaphone },
 ];
 
+const guardNavigation = [
+  { name: 'Scan QR', href: '/guard/dashboard', icon: LayoutDashboard },
+];
+
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const navigation = user?.role === 'admin' ? adminNavigation : user?.role === 'warden' ? wardenNavigation : studentNavigation;
+  const navigation = user?.role === 'admin' 
+    ? adminNavigation 
+    : user?.role === 'warden' 
+    ? wardenNavigation 
+    : user?.role === 'guard'
+    ? guardNavigation
+    : studentNavigation;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -98,7 +108,7 @@ export const MainLayout = () => {
           {/* Profile & Sign Out */}
           <div className="p-4 border-t border-slate-700/50">
             <NavLink
-              to={user?.role === 'warden' ? '/warden/profile' : '/profile'}
+              to={user?.role === 'warden' ? '/warden/profile' : user?.role === 'admin' ? '/admin/profile' : user?.role === 'guard' ? '/guard/profile' : '/profile'}
               className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
               onClick={() => setSidebarOpen(false)}
             >
@@ -108,7 +118,7 @@ export const MainLayout = () => {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white truncate">{user?.name}</p>
                 <p className="text-xs text-slate-400 truncate">
-                  {user?.role === 'admin' ? 'Administrator' : user?.role === 'warden' ? 'Warden' : `Room ${user?.room}`}
+                  {user?.role === 'admin' ? 'Administrator' : user?.role === 'warden' ? 'Warden' : user?.role === 'guard' ? 'Hostel Guard' : `Room ${user?.room}`}
                 </p>
               </div>
             </NavLink>
@@ -142,7 +152,7 @@ export const MainLayout = () => {
           <div className="flex items-center gap-4">
             <div className="text-sm text-right hidden sm:block">
               <p className="font-medium text-slate-900">{user?.name}</p>
-              <p className="text-slate-500">{user?.role === 'admin' ? 'Administrator' : user?.role === 'warden' ? 'Warden' : `Room ${user?.room}`}</p>
+              <p className="text-slate-500">{user?.role === 'admin' ? 'Administrator' : user?.role === 'warden' ? 'Warden' : user?.role === 'guard' ? 'Hostel Guard' : `Room ${user?.room}`}</p>
             </div>
             <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold shrink-0">
               {user?.name.charAt(0)}

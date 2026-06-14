@@ -194,3 +194,83 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ error: 'Server error while resetting password' });
   }
 };
+
+// @desc    Update profile (name, email, phone, address, department, password) — works for all roles
+// @route   PUT /api/auth/profile
+// @access  Private
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, phone, parentPhone, address, department, room,
+            currentPassword, newPassword, confirmNewPassword } = req.body;
+
+    // Fetch user with password field
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let passwordChanged = false;
+
+    // --- Handle password change ---
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to set a new password' });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      }
+      if (newPassword !== confirmNewPassword) {
+        return res.status(400).json({ error: 'New passwords do not match' });
+      }
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+      user.password = newPassword; // Will be hashed by pre-save hook
+      passwordChanged = true;
+    }
+
+    // --- Handle email change ---
+    if (email && email.toLowerCase().trim() !== user.email) {
+      const normalizedNewEmail = email.toLowerCase().trim();
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(normalizedNewEmail)) {
+        return res.status(400).json({ error: 'Invalid email address' });
+      }
+      const existing = await User.findOne({ email: normalizedNewEmail });
+      if (existing && String(existing._id) !== String(user._id)) {
+        return res.status(400).json({ error: 'This email is already in use by another account' });
+      }
+      user.email = normalizedNewEmail;
+    }
+
+    // --- Handle allowed profile fields ---
+    if (name !== undefined && name.trim()) user.name = name.trim();
+    if (phone !== undefined) user.phone = phone.trim();
+    if (parentPhone !== undefined) user.parentPhone = parentPhone.trim();
+    if (address !== undefined) user.address = address.trim();
+    if (department !== undefined) user.department = department.trim();
+    if (room !== undefined) user.room = room.trim();
+
+    await user.save();
+
+    // Send password-changed notification email
+    if (passwordChanged) {
+      const emailService = require('../services/emailService');
+      emailService.sendPasswordChangedEmail(user.email, user.name).catch(err => {
+        console.error(`Password change notification failed for ${user.email}:`, err.message);
+      });
+    }
+
+    res.json({
+      message: passwordChanged ? 'Profile and password updated successfully' : 'Profile updated successfully',
+      user: formatUser(user)
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+

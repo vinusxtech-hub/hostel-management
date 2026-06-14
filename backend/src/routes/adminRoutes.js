@@ -5,6 +5,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 const { protect, adminOnly } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
 const noticeController = require('../controllers/noticeController');
+const leaveController = require('../controllers/leaveController');
 
 // All admin routes require authentication + admin role
 router.use(protect);
@@ -33,8 +34,15 @@ router.delete('/notices/:id', noticeController.deleteNotice);
 router.get('/settings', adminController.getSettings);
 router.put('/settings', adminController.updateSettings);
 
+// Leave management routes
+router.get('/leaves', leaveController.getPendingLeaves);
+router.get('/leaves/all', leaveController.getAllLeaves);
+router.put('/leaves/:id/approve', leaveController.approveLeave);
+router.put('/leaves/:id/reject', leaveController.rejectLeave);
+
 // Warden management routes
 router.get('/wardens', adminController.getWardens);
+router.post('/wardens', adminController.addWarden);
 router.get('/wardens/:id', adminController.getWardenDetails);
 
 module.exports = router;

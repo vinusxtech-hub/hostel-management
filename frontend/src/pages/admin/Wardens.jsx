@@ -4,6 +4,9 @@ import { CardSkeleton } from "../../components/Skeleton";
 import { Modal } from "../../components/Modal";
 import { useToast } from "../../hooks/useToast";
 import { api } from "../../services/api";
+import { Input } from "../../components/Input";
+import { Button } from "../../components/Button";
+import { Plus } from "lucide-react";
 import {
   Shield,
   ShieldCheck,
@@ -34,7 +37,41 @@ export const AdminWardens = () => {
   const [wardenDetails, setWardenDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const { error: showError } = useToast();
+  const { error: showError, success } = useToast();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addedWarden, setAddedWarden] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newWardenData, setNewWardenData] = useState({
+    name: "",
+    email: "",
+    hostelSection: "",
+    building: "",
+    phone: ""
+  });
+
+  const handleAddWarden = async (e) => {
+    e.preventDefault();
+    if (!newWardenData.name || !newWardenData.email) {
+      showError("Name and email are required");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await api.admin.addWarden(newWardenData);
+      success("Warden added successfully!");
+      setShowAddModal(false);
+      setAddedWarden(response);
+      setNewWardenData({ name: "", email: "", hostelSection: "", building: "", phone: "" });
+      // Reload wardens list
+      const data = await api.admin.getWardens();
+      setWardens(data);
+    } catch (err) {
+      showError(err.message || "Failed to add warden");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchWardens = async () => {
@@ -160,6 +197,12 @@ export const AdminWardens = () => {
             <ShieldCheck className="w-4 h-4 text-violet-600" />
             <span className="text-sm font-semibold text-slate-700">{wardens.length} Wardens</span>
           </div>
+          <Button
+            onClick={() => setShowAddModal(true)}
+            size="md"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add Warden
+          </Button>
         </div>
       </div>
 
@@ -332,21 +375,26 @@ export const AdminWardens = () => {
             {activeTab === "overview" && (
               <div className="space-y-4">
                 {/* Quick Stats */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="text-center p-3 bg-blue-50 rounded-xl border border-blue-100">
                     <Users className="w-5 h-5 text-blue-600 mx-auto mb-1.5" />
-                    <p className="text-2xl font-bold text-slate-800">{wardenDetails.stats.studentCount}</p>
-                    <p className="text-xs text-blue-600 font-medium mt-0.5">Students</p>
+                    <p className="text-xl font-bold text-slate-800">{wardenDetails.stats.studentCount}</p>
+                    <p className="text-[10px] text-blue-600 font-medium mt-0.5">Students</p>
                   </div>
-                  <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                  <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-100">
                     <CheckCircle className="w-5 h-5 text-emerald-600 mx-auto mb-1.5" />
-                    <p className="text-2xl font-bold text-slate-800">{wardenDetails.stats.totalHandled}</p>
-                    <p className="text-xs text-emerald-600 font-medium mt-0.5">Handled</p>
+                    <p className="text-xl font-bold text-slate-800">{wardenDetails.stats.totalHandled}</p>
+                    <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Handled</p>
                   </div>
-                  <div className="text-center p-4 bg-violet-50 rounded-xl border border-violet-100">
+                  <div className="text-center p-3 bg-violet-50 rounded-xl border border-violet-100">
                     <Megaphone className="w-5 h-5 text-violet-600 mx-auto mb-1.5" />
-                    <p className="text-2xl font-bold text-slate-800">{wardenDetails.stats.noticeCount}</p>
-                    <p className="text-xs text-violet-600 font-medium mt-0.5">Notices</p>
+                    <p className="text-xl font-bold text-slate-800">{wardenDetails.stats.noticeCount}</p>
+                    <p className="text-[10px] text-violet-600 font-medium mt-0.5">Notices</p>
+                  </div>
+                  <div className="text-center p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <Calendar className="w-5 h-5 text-indigo-600 mx-auto mb-1.5" />
+                    <p className="text-xl font-bold text-slate-800">{wardenDetails.stats.leavesApproved || 0}</p>
+                    <p className="text-[10px] text-indigo-600 font-medium mt-0.5">Leaves Appr.</p>
                   </div>
                 </div>
 
@@ -488,6 +536,122 @@ export const AdminWardens = () => {
             )}
           </div>
         ) : null}
+      </Modal>
+
+      {/* Add Warden Modal */}
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Warden" className="max-w-lg">
+        <form onSubmit={handleAddWarden} className="space-y-4">
+          <Input
+            label="Warden Name"
+            value={newWardenData.name}
+            onChange={(e) => setNewWardenData({ ...newWardenData, name: e.target.value })}
+            placeholder="e.g. Rajesh Kumar"
+            required
+          />
+          <Input
+            label="Email Address"
+            type="email"
+            value={newWardenData.email}
+            onChange={(e) => setNewWardenData({ ...newWardenData, email: e.target.value })}
+            placeholder="e.g. rajesh@test.com"
+            required
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Hostel Section</label>
+            <select
+              value={newWardenData.hostelSection}
+              onChange={(e) => setNewWardenData({ ...newWardenData, hostelSection: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 bg-white text-sm"
+            >
+              <option value="">Select section</option>
+              <option value="boys">Boys Hostel</option>
+              <option value="girls">Girls Hostel</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Building (Optional)</label>
+            <select
+              value={newWardenData.building}
+              onChange={(e) => setNewWardenData({ ...newWardenData, building: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 bg-white text-sm"
+            >
+              <option value="">Select building</option>
+              <option value="A">Building A</option>
+              <option value="B">Building B</option>
+              <option value="C">Building C</option>
+            </select>
+          </div>
+          <Input
+            label="Phone Number"
+            value={newWardenData.phone}
+            onChange={(e) => setNewWardenData({ ...newWardenData, phone: e.target.value })}
+            placeholder="e.g. +91-9876543210"
+          />
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Adding...' : 'Add Warden'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Success Modal showing warden credentials */}
+      <Modal 
+        isOpen={!!addedWarden} 
+        onClose={() => setAddedWarden(null)} 
+        title="Warden Added Successfully"
+        className="max-w-md"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
+            <CheckCircle className="w-12 h-12 text-emerald-500 mb-2" />
+            <h3 className="text-base font-bold text-slate-800">Warden Added</h3>
+            <p className="text-xs text-slate-500 mt-1">Credentials have been automatically sent to the warden's email.</p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Full Name</p>
+              <p className="text-sm font-bold text-slate-800 mt-0.5">{addedWarden?.name}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Username (Email)</p>
+              <p className="text-sm font-bold text-slate-800 mt-0.5 break-all">{addedWarden?.email}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Generated Password</p>
+              <p className="text-sm font-mono font-extrabold text-indigo-700 mt-0.5">{addedWarden?.password}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hostel Section</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5 capitalize">{addedWarden?.hostelSection || 'Boys'}</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Building</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5 capitalize">{addedWarden?.building || 'All'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button 
+              className="flex-1"
+              onClick={() => {
+                navigator.clipboard.writeText(`Username: ${addedWarden?.email}\nPassword: ${addedWarden?.password}`);
+                success("Credentials copied to clipboard!");
+              }}
+            >
+              Copy Credentials
+            </Button>
+            <Button variant="secondary" onClick={() => setAddedWarden(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

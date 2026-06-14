@@ -179,7 +179,7 @@ exports.createLeaveRequest = async (req, res) => {
 exports.getMyLeaves = async (req, res) => {
   try {
     const leaves = await LeaveRequest.find({ studentId: req.user._id })
-      .populate('approvedBy', 'name')
+      .populate('approvedBy', 'name role')
       .sort({ createdAt: -1 });
 
     const formatted = leaves.map(l => ({
@@ -190,6 +190,8 @@ exports.getMyLeaves = async (req, res) => {
       status: l.status,
       remarks: l.remarks,
       approvedByName: l.approvedBy?.name || '',
+      approvedByRole: l.approvedBy?.role || '',
+      approvedAt: l.approvedAt || null,
       documentUrl: l.documentUrl,
       createdAt: l.createdAt,
       updatedAt: l.updatedAt
@@ -238,14 +240,16 @@ exports.cancelLeaveRequest = async (req, res) => {
 // @access  Warden
 exports.getPendingLeaves = async (req, res) => {
   try {
-    // Gender-based filtering: warden sees only their hostel section's students
-    const wardenSection = normalizeHostelSection(req.user.hostelSection);
-    const studentIds = await getStudentIdsForSection(wardenSection);
+    let filter = { status: 'Pending' };
+    
+    // Admin can see all leaves, Warden only sees their assigned students' leaves
+    if (req.user.role !== 'admin') {
+      const wardenSection = normalizeHostelSection(req.user.hostelSection);
+      const studentIds = await getStudentIdsForSection(wardenSection);
+      filter.studentId = { $in: studentIds };
+    }
 
-    const leaves = await LeaveRequest.find({
-      studentId: { $in: studentIds },
-      status: 'Pending'
-    })
+    const leaves = await LeaveRequest.find(filter)
       .populate('studentId', 'name email room department hostelSection building phone')
       .sort({ createdAt: -1 });
 
@@ -279,17 +283,22 @@ exports.getPendingLeaves = async (req, res) => {
 exports.getAllLeaves = async (req, res) => {
   try {
     const { status } = req.query;
-    const wardenSection = normalizeHostelSection(req.user.hostelSection);
-    const studentIds = await getStudentIdsForSection(wardenSection);
+    
+    let filter = {};
+    // Admin can see all leaves, Warden only sees their assigned students' leaves
+    if (req.user.role !== 'admin') {
+      const wardenSection = normalizeHostelSection(req.user.hostelSection);
+      const studentIds = await getStudentIdsForSection(wardenSection);
+      filter.studentId = { $in: studentIds };
+    }
 
-    const filter = { studentId: { $in: studentIds } };
     if (status && status !== 'All') {
       filter.status = status;
     }
 
     const leaves = await LeaveRequest.find(filter)
       .populate('studentId', 'name email room department hostelSection building phone')
-      .populate('approvedBy', 'name')
+      .populate('approvedBy', 'name role')
       .sort({ createdAt: -1 });
 
     const formatted = leaves.map(l => ({
@@ -307,6 +316,8 @@ exports.getAllLeaves = async (req, res) => {
       status: l.status,
       remarks: l.remarks,
       approvedByName: l.approvedBy?.name || '',
+      approvedByRole: l.approvedBy?.role || '',
+      approvedAt: l.approvedAt || null,
       documentUrl: l.documentUrl,
       createdAt: l.createdAt,
       updatedAt: l.updatedAt
@@ -327,7 +338,7 @@ exports.approveLeave = async (req, res) => {
     const { remarks } = req.body;
 
     const leave = await LeaveRequest.findById(req.params.id)
-      .populate('studentId', 'hostelSection');
+      .populate('studentId', 'hostelSection building');
 
     if (!leave) {
       return res.status(404).json({ error: 'Leave request not found' });
@@ -337,16 +348,20 @@ exports.approveLeave = async (req, res) => {
       return res.status(400).json({ error: 'Only pending leave requests can be approved' });
     }
 
-    // Verify warden has authority over this student's section
-    const wardenSection = normalizeHostelSection(req.user.hostelSection);
-    if (!canWardenAccessStudent(wardenSection, leave.studentId?.hostelSection)) {
-      return res.status(403).json({ error: 'Access denied — student is not in your hostel section' });
+    // Verify warden section check, bypass for admin
+    if (req.user.role !== 'admin') {
+      const wardenSection = normalizeHostelSection(req.user.hostelSection);
+      const wardenBuilding = normalizeBuilding(req.user.building);
+      if (!canWardenAccessStudent(wardenSection, wardenBuilding, leave.studentId?.hostelSection, leave.studentId?.building)) {
+        return res.status(403).json({ error: 'Access denied — student is not in your hostel section' });
+      }
     }
 
     // Update leave status
     leave.status = 'Approved';
     leave.remarks = remarks || '';
     leave.approvedBy = req.user._id;
+    leave.approvedAt = new Date();
     await leave.save();
 
     // Integration: Create "On Leave" attendance records
@@ -358,7 +373,7 @@ exports.approveLeave = async (req, res) => {
 
     // Re-populate for response
     await leave.populate('studentId', 'name email room department hostelSection building phone');
-    await leave.populate('approvedBy', 'name');
+    await leave.populate('approvedBy', 'name role');
 
     res.json({
       id: leave._id,
@@ -371,6 +386,8 @@ exports.approveLeave = async (req, res) => {
       status: leave.status,
       remarks: leave.remarks,
       approvedByName: leave.approvedBy?.name || '',
+      approvedByRole: leave.approvedBy?.role || '',
+      approvedAt: leave.approvedAt,
       createdAt: leave.createdAt,
       attendanceRecordsCreated: recordsCreated
     });
@@ -388,7 +405,7 @@ exports.rejectLeave = async (req, res) => {
     const { remarks } = req.body;
 
     const leave = await LeaveRequest.findById(req.params.id)
-      .populate('studentId', 'hostelSection');
+      .populate('studentId', 'hostelSection building');
 
     if (!leave) {
       return res.status(404).json({ error: 'Leave request not found' });
@@ -398,21 +415,25 @@ exports.rejectLeave = async (req, res) => {
       return res.status(400).json({ error: 'Only pending leave requests can be rejected' });
     }
 
-    // Verify warden has authority over this student's section
-    const wardenSection = normalizeHostelSection(req.user.hostelSection);
-    if (!canWardenAccessStudent(wardenSection, leave.studentId?.hostelSection)) {
-      return res.status(403).json({ error: 'Access denied — student is not in your hostel section' });
+    // Verify warden section check, bypass for admin
+    if (req.user.role !== 'admin') {
+      const wardenSection = normalizeHostelSection(req.user.hostelSection);
+      const wardenBuilding = normalizeBuilding(req.user.building);
+      if (!canWardenAccessStudent(wardenSection, wardenBuilding, leave.studentId?.hostelSection, leave.studentId?.building)) {
+        return res.status(403).json({ error: 'Access denied — student is not in your hostel section' });
+      }
     }
 
     // Update leave status
     leave.status = 'Rejected';
     leave.remarks = remarks || '';
     leave.approvedBy = req.user._id;
+    leave.approvedAt = new Date();
     await leave.save();
 
     // Re-populate for response
     await leave.populate('studentId', 'name email room department hostelSection building phone');
-    await leave.populate('approvedBy', 'name');
+    await leave.populate('approvedBy', 'name role');
 
     res.json({
       id: leave._id,
@@ -425,6 +446,8 @@ exports.rejectLeave = async (req, res) => {
       status: leave.status,
       remarks: leave.remarks,
       approvedByName: leave.approvedBy?.name || '',
+      approvedByRole: leave.approvedBy?.role || '',
+      approvedAt: leave.approvedAt,
       createdAt: leave.createdAt
     });
   } catch (error) {
@@ -457,5 +480,78 @@ exports.cleanupExpiredLeaves = async () => {
     }
   } catch (error) {
     console.error('Leave cleanup error:', error);
+  }
+};
+
+// @desc    Verify QR Code Pass (scanned by guard)
+// @route   POST /api/guard/verify-qr
+// @access  Private/Guard
+exports.verifyQrCode = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const mongoose = require('mongoose');
+
+    if (!token || !mongoose.Types.ObjectId.isValid(token)) {
+      return res.status(400).json({ error: 'Invalid QR Code format' });
+    }
+
+    const leave = await LeaveRequest.findById(token)
+      .populate('studentId', 'name email room department hostelSection building phone')
+      .populate('approvedBy', 'name role');
+
+    if (!leave) {
+      return res.status(404).json({ error: 'QR Code invalid - No matching leave request found' });
+    }
+
+    if (leave.status !== 'Approved') {
+      return res.status(400).json({ error: `QR Code invalid - Leave status is ${leave.status}` });
+    }
+
+    if (!leave.approvedAt) {
+      return res.status(400).json({ error: 'QR Code invalid - Missing approval timestamp' });
+    }
+
+    // Check 3 hours expiry
+    const approvedTime = new Date(leave.approvedAt).getTime();
+    const expiresTime = approvedTime + (3 * 60 * 60 * 1000); // 3 hours in ms
+    const currentTime = Date.now();
+
+    if (currentTime > expiresTime) {
+      const expiredByMin = Math.round((currentTime - expiresTime) / 60000);
+      return res.status(400).json({ 
+        error: `QR Code has expired!`,
+        expired: true,
+        details: {
+          studentName: leave.studentId?.name || 'Unknown',
+          approvedBy: leave.approvedBy?.name || 'Unknown',
+          approvedByRole: leave.approvedBy?.role || 'N/A',
+          approvedAt: leave.approvedAt,
+          expiredByMinutes: expiredByMin
+        }
+      });
+    }
+
+    // QR is valid
+    res.json({
+      valid: true,
+      studentName: leave.studentId?.name || 'Unknown',
+      studentEmail: leave.studentId?.email || '',
+      room: leave.studentId?.room || 'N/A',
+      department: leave.studentId?.department || 'N/A',
+      hostelSection: leave.studentId?.hostelSection || '',
+      building: leave.studentId?.building || '',
+      phone: leave.studentId?.phone || 'N/A',
+      reason: leave.reason,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      approvedBy: leave.approvedBy?.name || 'Unknown',
+      approvedByRole: leave.approvedBy?.role || 'N/A',
+      approvedAt: leave.approvedAt,
+      expiresAt: new Date(expiresTime)
+    });
+
+  } catch (error) {
+    console.error('Verify QR error:', error);
+    res.status(500).json({ error: 'Server error during QR verification' });
   }
 };

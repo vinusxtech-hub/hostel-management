@@ -4,6 +4,8 @@ const { protect, wardenOnly } = require('../middleware/auth');
 const wardenController = require('../controllers/wardenController');
 const noticeController = require('../controllers/noticeController');
 const leaveController = require('../controllers/leaveController');  // Integration: Leave Management System
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit
 
 // All warden routes require authentication + warden role
 router.use(protect);
@@ -11,6 +13,8 @@ router.use(wardenOnly);
 
 router.get('/stats', wardenController.getDashboardStats);
 router.get('/students', wardenController.getStudents);
+router.post('/students', wardenController.addStudent);
+router.post('/students/bulk-import', upload.single('file'), wardenController.bulkImportStudents);
 router.get('/students/:id', wardenController.getStudentDetails);
 router.get('/resolutions', wardenController.getResolutions);
 router.put('/resolutions/:id', wardenController.updateResolution);

@@ -41,6 +41,10 @@ const leaveRequestSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
   documentUrl: {
     type: String,
     default: ''  // Base64 data URI for optional proof/document

@@ -6,6 +6,7 @@ const getRoleHome = (role) => {
   switch (role) {
     case "admin": return "/admin/dashboard";
     case "warden": return "/warden/dashboard";
+    case "guard": return "/guard/dashboard";
     default: return "/dashboard";
   }
 };

@@ -4,6 +4,12 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const getToken = () => localStorage.getItem('hostel_token');
 
 const handleResponse = async (response) => {
+  if (response.status === 401) {
+    localStorage.removeItem('hostel_token');
+    localStorage.removeItem('hostel_user');
+    window.location.href = '/login';
+    throw new Error('Session expired. Please log in again.');
+  }
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -56,6 +62,17 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
+      });
+      return handleResponse(response);
+    },
+    // Universal profile update — works for all roles
+    // Supports: name, email, phone, parentPhone, address, department, room
+    // Password change: currentPassword, newPassword, confirmNewPassword
+    updateProfile: async (data) => {
+      const response = await fetch(`${BASE_URL}/auth/profile`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
       });
       return handleResponse(response);
     }
@@ -298,6 +315,36 @@ export const api = {
         headers: authHeaders(),
       });
       return handleResponse(response);
+    },
+    addWarden: async (data) => {
+      const response = await fetch(`${BASE_URL}/admin/wardens`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    getLeaves: async () => {
+      const response = await fetch(`${BASE_URL}/admin/leaves/all`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    approveLeave: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/admin/leaves/${id}/approve`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    rejectLeave: async (id, data) => {
+      const response = await fetch(`${BASE_URL}/admin/leaves/${id}/reject`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
     }
   },
 
@@ -409,6 +456,26 @@ export const api = {
         body: JSON.stringify(data),
       });
       return handleResponse(response);
+    },
+    addStudent: async (data) => {
+      const response = await fetch(`${BASE_URL}/warden/students`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    bulkImportStudents: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${BASE_URL}/warden/students/bulk-import`, {
+        method: 'POST',
+        headers: {
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
+        },
+        body: formData,
+      });
+      return handleResponse(response);
     }
   },
 
@@ -431,6 +498,18 @@ export const api = {
     getUserDeviceInfo: async (userId) => {
       const response = await fetch(`${BASE_URL}/device/info/${userId}`, {
         headers: authHeaders(),
+      });
+      return handleResponse(response);
+    }
+  },
+
+  // Guard APIs
+  guard: {
+    verifyQr: async (token) => {
+      const response = await fetch(`${BASE_URL}/guard/verify-qr`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ token }),
       });
       return handleResponse(response);
     }

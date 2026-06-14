@@ -11,9 +11,11 @@ import { MainLayout } from "./layouts/MainLayout";
 
 // Auth
 import { Login } from "./pages/auth/Login";
-import { Signup } from "./pages/auth/Signup";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { ResetPassword } from "./pages/auth/ResetPassword";
+
+// Guard Pages
+import { GuardDashboard } from "./pages/guard/Dashboard";
 
 // Student Pages
 import { Dashboard as StudentDashboard } from "./pages/student/Dashboard";
@@ -60,9 +62,6 @@ function AppContent() {
         <Route path="/login" element={<AuthLayout />}>
           <Route index element={<Login />} />
         </Route>
-        <Route path="/signup" element={<AuthLayout />}>
-          <Route index element={<Signup />} />
-        </Route>
         <Route path="/forgot-password" element={<AuthLayout />}>
           <Route index element={<ForgotPassword />} />
         </Route>
@@ -102,6 +101,12 @@ function AppContent() {
           <Route path="resolutions" element={<WardenResolutions />} />
           <Route path="notices" element={<WardenNotices />} />
           <Route path="leaves" element={<WardenLeaves />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+
+        {/* Guard Routes */}
+        <Route path="/guard" element={<ProtectedRoute requiredRole="guard"><MainLayout /></ProtectedRoute>}>
+          <Route path="dashboard" element={<GuardDashboard />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

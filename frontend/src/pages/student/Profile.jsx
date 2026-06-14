@@ -3,46 +3,40 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { Input } from "../../components/Input";
 import { Modal } from "../../components/Modal";
 import { useToast } from "../../hooks/useToast";
 import { api } from "../../services/api";
 import {
   Building,
-  CalendarDays,
   Edit3,
+  Eye,
+  EyeOff,
   Home,
+  Key,
+  Lock,
   LogOut,
   Mail,
-  MapPin,
   Phone,
   Save,
   Shield,
-  Sparkles,
-  UserCircle2,
+  User,
   Users,
-  X
+  X,
+  CheckCircle2,
+  AlertCircle,
+  BookOpen,
+  Hash,
+  MapPin,
 } from "lucide-react";
 
-const getInitials = (name) => {
-  if (!name) return "U";
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("");
-};
+const getInitials = (name = "") =>
+  name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join("");
 
 const formatDate = (value) => {
   if (!value) return "Not available";
-
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
+  return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const getHostelSectionLabel = (value) => {
@@ -51,317 +45,466 @@ const getHostelSectionLabel = (value) => {
   return "Not assigned";
 };
 
-const getRoleLabel = (role) => {
-  if (!role) return "User";
-  return role.charAt(0).toUpperCase() + role.slice(1);
-};
-
 const getRoleTheme = (role) => {
-  if (role === "warden") {
-    return {
-      accent: "text-violet-700",
-      accentSoft: "text-violet-600",
-      surface: "from-violet-50 via-white to-indigo-50",
-      avatar: "from-violet-700 via-violet-600 to-indigo-600",
-      chip: "border-violet-100 bg-violet-50 text-violet-700"
-    };
-  }
-
-  if (role === "admin") {
-    return {
-      accent: "text-slate-800",
-      accentSoft: "text-slate-600",
-      surface: "from-slate-100 via-white to-slate-50",
-      avatar: "from-slate-800 via-slate-700 to-slate-600",
-      chip: "border-slate-200 bg-white text-slate-700"
-    };
-  }
-
-  return {
-    accent: "text-sky-700",
-    accentSoft: "text-sky-600",
-    surface: "from-sky-50 via-white to-cyan-50",
-    avatar: "from-sky-700 via-sky-600 to-cyan-600",
-    chip: "border-sky-100 bg-sky-50 text-sky-700"
+  const themes = {
+    warden: { gradient: "from-violet-600 to-indigo-700", badge: "bg-violet-100 text-violet-700 border-violet-200", ring: "ring-violet-300", accent: "text-violet-700", btn: "from-violet-600 to-indigo-700" },
+    admin:  { gradient: "from-slate-700 to-slate-900",   badge: "bg-slate-100 text-slate-700 border-slate-200",  ring: "ring-slate-300",  accent: "text-slate-700",  btn: "from-slate-700 to-slate-900"  },
+    guard:  { gradient: "from-orange-500 to-red-600",    badge: "bg-orange-100 text-orange-700 border-orange-200", ring: "ring-orange-300", accent: "text-orange-700", btn: "from-orange-500 to-red-600"  },
+    student:{ gradient: "from-sky-500 to-cyan-600",      badge: "bg-sky-100 text-sky-700 border-sky-100",        ring: "ring-sky-300",    accent: "text-sky-700",    btn: "from-sky-500 to-cyan-600"    },
   };
+  return themes[role] || themes.student;
 };
 
-const getRoleProfileConfig = (user) => {
-  if (user?.role === "warden") {
-    return {
-      title: "Warden Profile",
-      badge: "Warden account",
-      subtitle: "Professional account summary for hostel supervision, communication, and section ownership.",
-      canEdit: false,
-      showStudentFields: false
-    };
-  }
-
-  if (user?.role === "admin") {
-    return {
-      title: "Admin Profile",
-      badge: "Administrator account",
-      subtitle: "Core administrator identity and access information for the hostel platform.",
-      canEdit: false,
-      showStudentFields: false
-    };
-  }
-
-  return {
-    title: "Student Profile",
-    badge: "Student profile",
-    subtitle: "Manage your account details and keep hostel records accurate for support, attendance, and leave workflows.",
-    canEdit: true,
-    showStudentFields: true
-  };
+const getRoleLabel = (role) => {
+  const labels = { student: "Student", admin: "Administrator", warden: "Hostel Warden", guard: "Hostel Guard" };
+  return labels[role] || role || "User";
 };
 
-const InfoTile = ({ icon: Icon, label, value, hint, toneClass = "bg-white/80" }) => (
-  <div className={`rounded-2xl border border-slate-200 p-4 shadow-sm shadow-slate-200/40 ${toneClass}`}>
-    <div className="flex items-start gap-3">
-      <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-        <p className="mt-1 break-words text-sm font-semibold text-slate-900">{value || "Not provided"}</p>
-        {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
-      </div>
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const InfoRow = ({ icon: Icon, label, value }) => (
+  <div className="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0">
+    <div className="p-2 bg-slate-50 rounded-lg mt-0.5 flex-shrink-0">
+      <Icon className="w-4 h-4 text-slate-500" />
+    </div>
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="text-sm font-semibold text-slate-800 mt-0.5 break-words">{value || <span className="text-slate-400 font-normal italic">Not provided</span>}</p>
     </div>
   </div>
 );
 
-const MetricCard = ({ label, value, subtext, gradient }) => (
-  <div className="overflow-hidden rounded-2xl border border-white/80 bg-white/90 shadow-sm shadow-slate-200/50">
-    <div className={`h-1.5 bg-gradient-to-r ${gradient}`} />
-    <div className="p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
-      <p className="mt-1 text-sm text-slate-500">{subtext}</p>
+const FormField = ({ label, type = "text", value, onChange, placeholder = "", hint, required, disabled, rightElement }) => (
+  <div>
+    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+      {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+    </label>
+    <div className="relative">
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all ${
+          disabled ? "bg-slate-50 text-slate-400 cursor-not-allowed" : "bg-white border-slate-200 hover:border-slate-300"
+        } ${rightElement ? "pr-10" : ""}`}
+      />
+      {rightElement && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightElement}</div>}
     </div>
+    {hint && <p className="text-[11px] text-slate-400 mt-1">{hint}</p>}
   </div>
 );
+
+const PasswordField = ({ label, value, onChange, placeholder, hint }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <FormField
+      label={label}
+      type={show ? "text" : "password"}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      hint={hint}
+      rightElement={
+        <button type="button" onClick={() => setShow(!show)} className="text-slate-400 hover:text-slate-600 transition-colors">
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      }
+    />
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const Profile = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
 
-  const [isEditing, setIsEditing] = useState(false);
+  const theme = useMemo(() => getRoleTheme(user?.role), [user?.role]);
+  const roleLabel = useMemo(() => getRoleLabel(user?.role), [user?.role]);
+
+  // Profile edit state
+  const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState({
     name: user?.name || "",
+    email: user?.email || "",
     phone: user?.phone || "",
     parentPhone: user?.parentPhone || "",
     address: user?.address || "",
+    department: user?.department || "",
     room: user?.room || "",
-    department: user?.department || ""
   });
 
-  const profileConfig = useMemo(() => getRoleProfileConfig(user), [user]);
-  const theme = useMemo(() => getRoleTheme(user?.role), [user?.role]);
-  const roleLabel = useMemo(() => getRoleLabel(user?.role), [user?.role]);
-  const hostelSectionLabel = useMemo(() => getHostelSectionLabel(user?.hostelSection), [user?.hostelSection]);
-  const accountStartDate = user?.joinedAt || user?.createdAt;
+  // Password change state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const handleEdit = () => {
+  const handleOpenEdit = () => {
     setEditData({
       name: user?.name || "",
+      email: user?.email || "",
       phone: user?.phone || "",
       parentPhone: user?.parentPhone || "",
       address: user?.address || "",
+      department: user?.department || "",
       room: user?.room || "",
-      department: user?.department || ""
     });
-    setIsEditing(true);
+    setShowEditModal(true);
   };
 
-  const handleSave = async () => {
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (!editData.name.trim()) { showError("Name is required"); return; }
+    if (!editData.email.trim()) { showError("Email is required"); return; }
+
     setIsSaving(true);
     try {
-      const updated = await api.student.updateProfile(editData);
-      updateUser(updated);
-      setIsEditing(false);
+      const result = await api.auth.updateProfile(editData);
+      updateUser(result.user);
+      setShowEditModal(false);
       success("Profile updated successfully!");
     } catch (err) {
-      error(err.message || "Failed to update profile");
+      showError(err.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const overviewStats = profileConfig.showStudentFields
-    ? [
-        { label: "Hostel Section", value: hostelSectionLabel, subtext: "Current hostel assignment", gradient: "from-sky-500 to-cyan-500" },
-        { label: "Room", value: user?.room || "Not set", subtext: "Hostel room identity", gradient: "from-indigo-500 to-blue-500" },
-        { label: "Department", value: user?.department || "Not set", gradient: "from-emerald-500 to-teal-500" }
-      ]
-    : [
-        { label: "Hostel Section", value: hostelSectionLabel, subtext: "Current section ownership", gradient: "from-violet-500 to-indigo-500" },
-        { label: "Assigned Hostel", value: hostelSectionLabel, subtext: "Current section ownership", gradient: "from-fuchsia-500 to-violet-500" },
-        { label: "Status", value: "Active", gradient: "from-emerald-500 to-green-500" }
-      ];
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!passwordData.currentPassword) { showError("Enter your current password"); return; }
+    if (!passwordData.newPassword) { showError("Enter a new password"); return; }
+    if (passwordData.newPassword.length < 6) { showError("Password must be at least 6 characters"); return; }
+    if (passwordData.newPassword !== passwordData.confirmNewPassword) { showError("New passwords do not match"); return; }
 
-  const contactTiles = profileConfig.showStudentFields
-    ? [
-        { icon: Mail, label: "Email address", value: user?.email, hint: "Primary login identity", toneClass: "bg-white/80" },
-        { icon: Phone, label: "Phone number", value: user?.phone, hint: "Used for day-to-day communication", toneClass: "bg-white/80" },
-        { icon: Users, label: "Parent contact", value: user?.parentPhone, hint: "Emergency family contact", toneClass: "bg-white/80" },
-        { icon: Home, label: "Home address", value: user?.address, hint: "Permanent address on record", toneClass: "bg-white/80" }
-      ]
-    : [
-        { icon: Mail, label: "Email address", value: user?.email, hint: "Primary account email", toneClass: "bg-white/80" },
-        { icon: Phone, label: "Phone number", value: user?.phone, hint: "Used for section coordination", toneClass: "bg-white/80" },
-        { icon: Home, label: "Address", value: user?.address, hint: "Current address on file", toneClass: "bg-white/80" }
-      ];
+    setIsChangingPassword(true);
+    try {
+      await api.auth.updateProfile(passwordData);
+      setPasswordSuccess(true);
+      success("Password changed successfully! A confirmation email has been sent.");
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess(false);
+        setPasswordData({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
+      }, 2500);
+    } catch (err) {
+      showError(err.message || "Failed to change password");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleLogout = () => { logout(); navigate("/login"); };
+
+  // Password strength indicator
+  const getPasswordStrength = (pw) => {
+    if (!pw) return null;
+    if (pw.length < 6) return { label: "Too short", color: "bg-red-400", width: "w-1/4" };
+    if (pw.length < 8) return { label: "Weak", color: "bg-orange-400", width: "w-2/4" };
+    if (!/[A-Z]/.test(pw) || !/\d/.test(pw)) return { label: "Fair", color: "bg-yellow-400", width: "w-3/4" };
+    return { label: "Strong", color: "bg-emerald-500", width: "w-full" };
+  };
+  const pwStrength = getPasswordStrength(passwordData.newPassword);
+
+  const contactRows = [
+    { icon: Mail, label: "Email Address", value: user?.email },
+    { icon: Phone, label: "Phone Number", value: user?.phone },
+    ...(user?.role === "student" ? [
+      { icon: Users, label: "Parent / Guardian Phone", value: user?.parentPhone },
+      { icon: Home, label: "Home Address", value: user?.address },
+      { icon: BookOpen, label: "Department", value: user?.department },
+      { icon: Hash, label: "Room Number", value: user?.room },
+    ] : [
+      { icon: BookOpen, label: "Department", value: user?.department },
+      { icon: Home, label: "Address", value: user?.address },
+    ]),
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <section className={`overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br ${theme.surface} shadow-xl shadow-slate-200/60`}>
-        <div className="p-6 sm:p-8">
-          <div className="space-y-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className={`flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-gradient-to-br ${theme.avatar} text-2xl font-bold text-white shadow-lg shadow-slate-400/30`}>
-                {getInitials(user?.name)}
-              </div>
+    <div className="max-w-3xl mx-auto space-y-5">
 
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                  {user?.name || profileConfig.title}
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm text-slate-600">{profileConfig.subtitle}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 font-medium ${theme.chip}`}>
-                    <Shield className="h-4 w-4" />
-                    {roleLabel}
-                  </span>
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 font-medium ${theme.chip}`}>
-                    <Building className="h-4 w-4" />
-                    {hostelSectionLabel}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/90 bg-white px-3 py-1 font-medium text-slate-700 shadow-sm">
-                    <Mail className={`h-4 w-4 ${theme.accentSoft}`} />
-                    {user?.email || "No email"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {overviewStats.map((item) => (
-                <MetricCard
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                  subtext={item.subtext}
-                  gradient={item.gradient}
-                />
-              ))}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {profileConfig.canEdit && (
-                <Button onClick={handleEdit}>
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Button>
+      {/* ── Hero Card ── */}
+      <div className={`rounded-3xl bg-gradient-to-br ${theme.gradient} p-6 sm:p-8 shadow-2xl shadow-slate-400/20 text-white`}>
+        <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+          {/* Avatar */}
+          <div className={`w-20 h-20 rounded-2xl bg-white/20 ring-4 ring-white/30 flex items-center justify-center text-3xl font-extrabold flex-shrink-0`}>
+            {getInitials(user?.name)}
+          </div>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight truncate">{user?.name}</h1>
+            <p className="text-white/75 text-sm mt-1 truncate">{user?.email}</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-white/15 border border-white/20`}>
+                <Shield className="w-3.5 h-3.5" />{roleLabel}
+              </span>
+              {user?.hostelSection && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-white/15 border border-white/20">
+                  <Building className="w-3.5 h-3.5" />{getHostelSectionLabel(user.hostelSection)}
+                  {user.building ? ` — Building ${user.building}` : ""}
+                </span>
               )}
-              <Button variant={profileConfig.canEdit ? "secondary" : "primary"} onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
+              {user?.createdAt && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-white/15 border border-white/20">
+                  Joined {formatDate(user.createdAt)}
+                </span>
+              )}
             </div>
           </div>
         </div>
-      </section>
 
-      <div className="grid gap-6">
-        <Card className="space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-slate-100 p-2 text-slate-700">
-              <UserCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Contact Information</h2>
-              <p className="text-sm text-slate-500">The main contact details attached to this account.</p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {contactTiles.map((item) => (
-              <InfoTile
-                key={item.label}
-                icon={item.icon}
-                label={item.label}
-                value={item.value}
-                hint={item.hint}
-                toneClass={item.toneClass}
-              />
-            ))}
-          </div>
-        </Card>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3 mt-6">
+          <button
+            onClick={handleOpenEdit}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 border border-white/25 text-white rounded-xl text-sm font-semibold transition-all"
+          >
+            <Edit3 className="w-4 h-4" /> Edit Profile
+          </button>
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 border border-white/25 text-white rounded-xl text-sm font-semibold transition-all"
+          >
+            <Key className="w-4 h-4" /> Change Password
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-5 py-2.5 bg-red-500/80 hover:bg-red-500 border border-red-400/40 text-white rounded-xl text-sm font-semibold transition-all ml-auto"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
       </div>
 
-      {profileConfig.canEdit && (
-        <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Edit Profile" className="max-w-2xl">
-          <div className="space-y-5">
-            <p className="text-sm text-slate-500">
-              Update the details that help the hostel team contact you and identify your records correctly.
-            </p>
+      {/* ── Contact & Details ── */}
+      <Card className="space-y-1">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 bg-slate-100 rounded-xl">
+            <User className="w-4 h-4 text-slate-600" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Profile Information</h2>
+            <p className="text-xs text-slate-500">Your personal and contact details on record.</p>
+          </div>
+        </div>
+        {contactRows.map(row => (
+          <InfoRow key={row.label} icon={row.icon} label={row.label} value={row.value} />
+        ))}
+      </Card>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
+      {/* ── Security Card ── */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 bg-slate-100 rounded-xl">
+            <Lock className="w-4 h-4 text-slate-600" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Account Security</h2>
+            <p className="text-xs text-slate-500">Manage your login credentials.</p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Password</p>
+            <p className="text-xs text-slate-500 mt-0.5">For security, change your password regularly. A confirmation email is sent on change.</p>
+          </div>
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${theme.btn} text-white text-sm font-semibold whitespace-nowrap shadow-md hover:opacity-90 transition-all`}
+          >
+            <Key className="w-4 h-4" /> Change Password
+          </button>
+        </div>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════════
+           Edit Profile Modal
+      ═══════════════════════════════════════════════════════════ */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Profile">
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          <p className="text-sm text-slate-500">Update your profile details below. Changing your email will update your login username.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <FormField
                 label="Full Name"
                 value={editData.name}
-                onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                onChange={e => setEditData({ ...editData, name: e.target.value })}
+                placeholder="e.g. Ankit Kumar"
+                required
               />
-              <Input
-                label="Room Number"
-                value={editData.room}
-                onChange={(e) => setEditData({ ...editData, room: e.target.value })}
+            </div>
+            <div className="sm:col-span-2">
+              <FormField
+                label="Email Address (Login Username)"
+                type="email"
+                value={editData.email}
+                onChange={e => setEditData({ ...editData, email: e.target.value })}
+                placeholder="e.g. ankit@example.com"
+                hint="Changing this will update your login email."
+                required
               />
-              <Input
-                label="Phone"
-                value={editData.phone}
-                onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-              />
-              <Input
-                label="Parent's Phone"
-                value={editData.parentPhone}
-                onChange={(e) => setEditData({ ...editData, parentPhone: e.target.value })}
-              />
-              <Input
-                label="Department"
-                value={editData.department}
-                onChange={(e) => setEditData({ ...editData, department: e.target.value })}
-              />
+            </div>
+            <FormField
+              label="Phone Number"
+              type="tel"
+              value={editData.phone}
+              onChange={e => setEditData({ ...editData, phone: e.target.value })}
+              placeholder="e.g. 9876543210"
+            />
+            <FormField
+              label="Department"
+              value={editData.department}
+              onChange={e => setEditData({ ...editData, department: e.target.value })}
+              placeholder="e.g. Computer Science"
+            />
+            {user?.role === "student" && (
+              <>
+                <FormField
+                  label="Room Number"
+                  value={editData.room}
+                  onChange={e => setEditData({ ...editData, room: e.target.value })}
+                  placeholder="e.g. A-101"
+                />
+                <FormField
+                  label="Parent / Guardian Phone"
+                  type="tel"
+                  value={editData.parentPhone}
+                  onChange={e => setEditData({ ...editData, parentPhone: e.target.value })}
+                  placeholder="e.g. 9800000000"
+                />
+                <div className="sm:col-span-2">
+                  <FormField
+                    label="Home Address"
+                    value={editData.address}
+                    onChange={e => setEditData({ ...editData, address: e.target.value })}
+                    placeholder="e.g. 123 MG Road, Bhopal"
+                  />
+                </div>
+              </>
+            )}
+            {(user?.role === "warden" || user?.role === "guard") && (
               <div className="sm:col-span-2">
-                <Input
+                <FormField
                   label="Address"
                   value={editData.address}
-                  onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                  onChange={e => setEditData({ ...editData, address: e.target.value })}
+                  placeholder="e.g. 123 MG Road, Bhopal"
                 />
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button onClick={handleSave} isLoading={isSaving} className="flex-1">
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </Button>
-              <Button variant="secondary" onClick={() => setIsEditing(false)}>
-                <X className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${theme.btn} text-white text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-all shadow-md`}
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════════════════════
+           Change Password Modal
+      ═══════════════════════════════════════════════════════════ */}
+      <Modal isOpen={showPasswordModal} onClose={() => { setShowPasswordModal(false); setPasswordSuccess(false); setPasswordData({ currentPassword: "", newPassword: "", confirmNewPassword: "" }); }} title="Change Password">
+        {passwordSuccess ? (
+          <div className="flex flex-col items-center py-6 gap-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+              <CheckCircle2 className="w-9 h-9 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-slate-900">Password Changed!</p>
+              <p className="text-sm text-slate-500 mt-1">A confirmation email has been sent to <strong>{user?.email}</strong></p>
             </div>
           </div>
-        </Modal>
-      )}
+        ) : (
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700">You will receive a confirmation email at <strong>{user?.email}</strong> after the password is changed.</p>
+            </div>
+
+            <PasswordField
+              label="Current Password"
+              value={passwordData.currentPassword}
+              onChange={e => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+              placeholder="Enter your current password"
+            />
+
+            <PasswordField
+              label="New Password"
+              value={passwordData.newPassword}
+              onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+              placeholder="Minimum 6 characters"
+            />
+
+            {/* Password strength bar */}
+            {passwordData.newPassword && pwStrength && (
+              <div className="space-y-1">
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-500 ${pwStrength.color} ${pwStrength.width}`} />
+                </div>
+                <p className={`text-xs font-medium ${
+                  pwStrength.label === "Strong" ? "text-emerald-600" :
+                  pwStrength.label === "Fair" ? "text-yellow-600" : "text-orange-600"
+                }`}>{pwStrength.label}</p>
+              </div>
+            )}
+
+            <PasswordField
+              label="Confirm New Password"
+              value={passwordData.confirmNewPassword}
+              onChange={e => setPasswordData({ ...passwordData, confirmNewPassword: e.target.value })}
+              placeholder="Re-enter new password"
+            />
+
+            {passwordData.confirmNewPassword && passwordData.newPassword !== passwordData.confirmNewPassword && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <X className="w-3 h-3" /> Passwords do not match
+              </p>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="submit"
+                disabled={isChangingPassword || !passwordData.currentPassword || !passwordData.newPassword}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${theme.btn} text-white text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-all shadow-md`}
+              >
+                <Lock className="w-4 h-4" />
+                {isChangingPassword ? "Changing..." : "Change Password"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowPasswordModal(false); setPasswordData({ currentPassword: "", newPassword: "", confirmNewPassword: "" }); }}
+                className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };

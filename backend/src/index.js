@@ -8,6 +8,7 @@ const studentRoutes = require('./routes/studentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const wardenRoutes = require('./routes/wardenRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
+const guardRoutes = require('./routes/guardRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +23,7 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/warden', wardenRoutes);
 app.use('/api/device', deviceRoutes);
+app.use('/api/guard', guardRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -29,60 +31,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // Auto-seed function for empty databases (in-memory or fresh install)
-const ensureDefaultWardens = async () => {
-  const User = require('./models/User');
-
-  const defaultWardens = [
-    {
-      name: 'Rajesh Sharma',
-      email: 'warden.boys@test.com',
-      password: 'password',
-      role: 'warden',
-      hostelSection: 'boys',
-      phone: '+91-9876000111'
-    },
-    {
-      name: 'Rohit Kumar',
-      email: 'warden.boys.c@test.com',
-      password: 'password',
-      role: 'warden',
-      hostelSection: 'boys',
-      building: 'C',
-      phone: '+91-9876000333'
-    },
-    {
-      name: 'Kavita Singh',
-      email: 'warden.girls@test.com',
-      password: 'password',
-      role: 'warden',
-      hostelSection: 'girls',
-      phone: '+91-9876000222'
-    }
-  ];
-
-  for (const wardenData of defaultWardens) {
-    const existing = await User.findOne({ email: wardenData.email }).select('+password');
-
-    if (!existing) {
-      await User.create(wardenData);
-      continue;
-    }
-
-    existing.name = wardenData.name;
-    existing.role = 'warden';
-    existing.hostelSection = wardenData.hostelSection;
-    existing.building = wardenData.building || '';
-    existing.phone = wardenData.phone;
-    await existing.save();
-  }
-};
-
 const autoSeed = async () => {
   const User = require('./models/User');
-  const Attendance = require('./models/Attendance');
-  const Resolution = require('./models/Resolution');
-  const Notice = require('./models/Notice');
-  const LeaveRequest = require('./models/LeaveRequest');  // Integration: Leave Management System
 
   const userCount = await User.countDocuments();
   if (userCount > 0) {
@@ -90,7 +40,7 @@ const autoSeed = async () => {
     return;
   }
 
-  console.log('Empty database detected. Auto-seeding...');
+  console.log('Empty database detected. Auto-seeding admin user...');
 
   // Create admin
   const admin = await User.create({
@@ -100,199 +50,20 @@ const autoSeed = async () => {
     role: 'admin'
   });
 
-  // Create wardens
-  await User.create([
-    {
-      name: 'Rajesh Sharma',
-      email: 'warden.boys@test.com',
-      password: 'password',
-      role: 'warden',
-      hostelSection: 'boys',
-      phone: '+91-9876000111'
-    },
-    {
-      name: 'Rohit Kumar',
-      email: 'warden.boys.c@test.com',
-      password: 'password',
-      role: 'warden',
-      hostelSection: 'boys',
-      building: 'C',
-      phone: '+91-9876000333'
-    },
-    {
-      name: 'Kavita Singh',
-      email: 'warden.girls@test.com',
-      password: 'password',
-      role: 'warden',
-      hostelSection: 'girls',
-      phone: '+91-9876000222'
-    }
-  ]);
-
-  const studentsData = [
-    { name: 'Ankit Kumar', email: 'student@test.com', password: 'password', hostelSection: 'boys', building: 'A', room: 'A-101', phone: '+91-7972302340', parentPhone: '+91-7884521069', address: '123 College Ave, University Town', department: 'Computer Science' },
-    { name: 'Kunal Raj', email: 'kunal@test.com', password: 'password', hostelSection: 'boys', building: 'B', room: 'B-205', phone: '+91-9876543210', department: 'Computer Science' },
-    { name: 'Rahul Kumar', email: 'rahul@test.com', password: 'password', hostelSection: 'boys', building: 'A', room: 'A-110', phone: '+91-9988776655', department: 'AIDS' },
-    { name: 'Shikha Kumari', email: 'shikha@test.com', password: 'password', hostelSection: 'girls', building: 'A', room: 'A-105', phone: '+91-8877665544', department: 'ECE/EX' },
-    { name: 'Priya Sharma', email: 'priya@test.com', password: 'password', hostelSection: 'girls', building: 'B', room: 'B-302', phone: '+91-7766554433', department: 'Civil/Mechanical' },
-    { name: 'Amit Singh', email: 'amit@test.com', password: 'password', hostelSection: 'boys', building: 'B', room: 'B-201', phone: '+91-6655443322', department: 'Pharmacy' },
-    { name: 'Neha Gupta', email: 'neha@test.com', password: 'password', hostelSection: 'girls', building: 'C', room: 'C-203', phone: '+91-5544332211', department: 'Computer Science' },
-    { name: 'Vikram Patel', email: 'vikram@test.com', password: 'password', hostelSection: 'boys', building: 'A', room: 'A-301', phone: '+91-4433221100', department: 'AIDS' },
-  ];
-
-  const students = await User.create(studentsData.map(s => ({ ...s, role: 'student' })));
-
-  // Create attendance records (last 30 days)
-  const hostelLat = parseFloat(process.env.HOSTEL_LAT) || 28.6139;
-  const hostelLng = parseFloat(process.env.HOSTEL_LNG) || 77.2090;
-  const attendanceRecords = [];
-
-  for (const student of students) {
-    for (let i = 30; i >= 1; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const rand = Math.random();
-      if (rand < 0.05) continue;
-      const isLate = rand > 0.90;
-      const hours = isLate ? 22 + Math.floor(Math.random() * 2) : 19 + Math.floor(Math.random() * 3);
-      const mins = Math.floor(Math.random() * 60);
-      attendanceRecords.push({
-        userId: student._id,
-        date: dateStr,
-        timestamp: d,
-        time: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`,
-        latitude: hostelLat + (Math.random() - 0.5) * 0.001,
-        longitude: hostelLng + (Math.random() - 0.5) * 0.001,
-        distance: Math.random() * 0.15,
-        status: isLate ? 'Late' : 'Present',
-        location: 'Inside'
-      });
-    }
-  }
-  await Attendance.insertMany(attendanceRecords);
-
-  // Create resolutions
-  await Resolution.create([
-    { userId: students[0]._id, category: 'Maintenance', description: 'Fan is not working in room A-101', status: 'Pending' },
-    { userId: students[0]._id, category: 'Cleanliness', description: 'Washroom needs cleaning on 2nd floor', status: 'Resolved' },
-    { userId: students[1]._id, category: 'Internet/Wi-Fi', description: 'Wi-Fi signal very weak in B block', status: 'In Progress' },
-    { userId: students[2]._id, category: 'Electrical', description: 'Power socket not working near bed', status: 'Pending' },
-    { userId: students[3]._id, category: 'Mess Food', description: 'Food quality has degraded this week', status: 'Pending' },
-    { userId: students[4]._id, category: 'Plumbing', description: 'Water leakage in bathroom', status: 'Resolved' },
-  ]);
-
-  // Integration: Seed sample leave requests
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const nextWeek = new Date();
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const twoDaysFromNow = new Date();
-  twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
-  const fiveDaysFromNow = new Date();
-  fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
-
-  await LeaveRequest.create([
-    {
-      studentId: students[0]._id,
-      reason: 'Family function — sister wedding ceremony',
-      startDate: tomorrow,
-      endDate: nextWeek,
-      status: 'Pending'
-    },
-    {
-      studentId: students[1]._id,
-      reason: 'Medical appointment at city hospital',
-      startDate: twoDaysFromNow,
-      endDate: twoDaysFromNow,
-      status: 'Pending'
-    },
-    {
-      studentId: students[3]._id,
-      reason: 'Going home for Diwali celebration',
-      startDate: fiveDaysFromNow,
-      endDate: nextWeek,
-      status: 'Pending'
-    }
-  ]);
-
-  console.log(`Seeded: 1 admin, 2 wardens, ${students.length} students, ${attendanceRecords.length} attendance records, 6 resolutions, 3 leave requests`);
-
-    // Seed notices
-    const futureDate = new Date();
-    futureDate.setMonth(futureDate.getMonth() + 1);
-
-    await Notice.create([
-      {
-        title: 'Hostel Curfew Timings Updated',
-        content: 'Please note that effective immediately, the hostel curfew time has been updated to 10:00 PM on weekdays and 11:00 PM on weekends. All students must ensure they are inside the hostel premises before the curfew time. Late entries will be recorded and reported to the warden.',
-        category: 'General',
-        priority: 'High',
-        isPinned: true,
-        createdBy: admin._id
-      },
-      {
-        title: 'Water Supply Maintenance — Block B',
-        content: 'The water supply in Block B will be temporarily disrupted on May 15th from 9:00 AM to 2:00 PM due to scheduled pipeline maintenance. Students are advised to store sufficient water beforehand. We apologize for the inconvenience.',
-        category: 'Maintenance',
-        priority: 'Medium',
-        isPinned: false,
-        expiresAt: futureDate,
-        createdBy: admin._id
-      },
-      {
-        title: 'Annual Cultural Fest — Participate Now!',
-        content: 'The Annual Cultural Fest "Utsav 2026" is scheduled for May 20-22. Events include dance, music, drama, and art competitions. Registration is open until May 18th. Visit the notice board near the mess hall for registration forms or contact your floor representative.',
-        category: 'Event',
-        priority: 'Medium',
-        isPinned: true,
-        expiresAt: futureDate,
-        createdBy: admin._id
-      },
-      {
-        title: '🚨 Fire Drill Scheduled — Mandatory Attendance',
-        content: 'A fire safety drill will be conducted on May 14th at 4:00 PM. All residents MUST participate. Assembly point: Main ground near Gate 2. Floor wardens will guide evacuation. This is mandatory for all hostel residents without exception.',
-        category: 'Emergency',
-        priority: 'Urgent',
-        isPinned: true,
-        createdBy: admin._id
-      },
-      {
-        title: 'Semester Exam Schedule Released',
-        content: 'The end-semester examination schedule for May-June 2026 has been released. Students can check their individual timetables on the university portal. Exam hall allocations will be shared 3 days before the first exam. Contact your department HOD for any clashes.',
-        category: 'Academic',
-        priority: 'High',
-        isPinned: false,
-        createdBy: admin._id
-      },
-      {
-        title: 'Wi-Fi Upgrade Notice',
-        content: 'We are upgrading the hostel Wi-Fi infrastructure to support higher speeds. The new system will provide up to 100 Mbps per user. During the transition period (May 12-13), intermittent connectivity issues may occur. Thank you for your patience.',
-        category: 'General',
-        priority: 'Low',
-        isPinned: false,
-        createdBy: admin._id
-      }
-    ]);
-
-    console.log('Seeded: 6 notices');
-  console.log('Admin: admin@test.com / password');
-  console.log('Boys Warden: warden.boys@test.com / password');
-  console.log('Girls Warden: warden.girls@test.com / password');
-  console.log('Student: student@test.com / password');
+  console.log('Seeded admin: admin@test.com / password');
 };
+
 
 // Connect to MongoDB and start server
 const startServer = async () => {
   await connectDB();
   await autoSeed();
-  await ensureDefaultWardens();
 
   // Integration: Leave Management System — cleanup expired leaves on startup
   const { cleanupExpiredLeaves } = require('./controllers/leaveController');
   await cleanupExpiredLeaves();
 
-  console.log('Default wardens ready: warden.boys@test.com / password, warden.girls@test.com / password');
+  console.log('Database connected and ready.');
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });

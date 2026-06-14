@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
@@ -29,7 +29,11 @@ import {
   Shield,
   Building,
   FileText,
-  Eye
+  Eye,
+  Plus,
+  Upload,
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
 
 export const WardenStudents = () => {
@@ -43,9 +47,121 @@ export const WardenStudents = () => {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [detailTab, setDetailTab] = useState("overview");
   const { user } = useAuth();
-  const { error } = useToast();
+  const { error: showError, success } = useToast();
   const sectionLabel = user?.hostelSection === "girls" ? "Girls Hostel" : user?.hostelSection === "boys" ? "Boys Hostel" : "Assigned Hostel";
   const normalizedWardenSection = String(user?.hostelSection || "").trim().toLowerCase();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newStudentData, setNewStudentData] = useState({ name: "", room: "", email: "", phone: "", department: "", password: "" });
+  const fileInputRef = useRef(null);
+
+  // Excel import state
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudentData.name || !newStudentData.email) {
+      showError("Name and email are required");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await api.warden.addStudent(newStudentData);
+      success("Student added successfully!");
+      setShowAddModal(false);
+      setNewStudentData({ name: "", room: "", email: "", phone: "", department: "", password: "" });
+      fetchStudents();
+    } catch (err) {
+      showError(err.message || "Failed to add student");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileSelect = (file) => {
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ];
+    const validExtensions = ['.xlsx', '.xls', '.csv'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
+      showError("Please upload an Excel file (.xlsx, .xls) or CSV file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError("File size must be under 5MB");
+      return;
+    }
+    setSelectedFile(file);
+    setImportResult(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile) {
+      showError("Please select a file first");
+      return;
+    }
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      const result = await api.warden.bulkImportStudents(selectedFile);
+      setImportResult(result);
+      if (result.success > 0) {
+        success(`${result.success} students imported successfully!`);
+        fetchStudents();
+      }
+    } catch (err) {
+      showError(err.message || "Failed to import students");
+      setImportResult({ success: 0, failed: 0, errors: [{ reason: err.message }], message: err.message });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCloseImportModal = () => {
+    setShowImportModal(false);
+    setSelectedFile(null);
+    setImportResult(null);
+    setIsDragging(false);
+  };
+
+  const downloadTemplate = () => {
+    const headers = "Name,Email,Room,Department,Phone,Password";
+    const sample1 = "Ankit Kumar,ankit@example.com,A-101,Computer Science,9876543210,password123";
+    const sample2 = "Kunal Raj,kunal@example.com,B-205,ECE,9123456789,password123";
+    const csvContent = `${headers}\n${sample1}\n${sample2}`;
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     fetchStudents();
@@ -159,13 +275,27 @@ export const WardenStudents = () => {
           </h1>
           <p className="text-slate-600 mt-2">View student details, attendance, and resolutions for {sectionLabel}</p>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full font-medium border border-emerald-200">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full font-medium border border-emerald-200 text-sm">
             {sectionStudents.filter(s => s.status === "Inside").length} Inside
           </span>
-          <span className="px-3 py-1.5 bg-red-50 text-red-600 rounded-full font-medium border border-red-200">
+          <span className="px-3 py-1.5 bg-red-50 text-red-600 rounded-full font-medium border border-red-200 text-sm">
             {sectionStudents.filter(s => s.status === "Outside").length} Outside
           </span>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
+          >
+            <Upload className="w-4 h-4" />
+            Import Excel
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Add Student
+          </button>
         </div>
       </div>
 
@@ -507,6 +637,230 @@ export const WardenStudents = () => {
             )}
           </div>
         ) : null}
+      </Modal>
+
+      {/* Add Student Modal */}
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
+        <form onSubmit={handleAddStudent} className="space-y-4">
+          <p className="text-sm text-slate-500">Student will be assigned to <strong>{sectionLabel}</strong> — Building <strong>{user?.building || 'N/A'}</strong></p>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name *</label>
+            <input
+              type="text"
+              value={newStudentData.name}
+              onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
+              placeholder="e.g. Ankit Kumar"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email *</label>
+            <input
+              type="email"
+              value={newStudentData.email}
+              onChange={(e) => setNewStudentData({ ...newStudentData, email: e.target.value })}
+              placeholder="e.g. ankit@example.com"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Room Number</label>
+              <input
+                type="text"
+                value={newStudentData.room}
+                onChange={(e) => setNewStudentData({ ...newStudentData, room: e.target.value })}
+                placeholder="e.g. A-101"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone</label>
+              <input
+                type="text"
+                value={newStudentData.phone}
+                onChange={(e) => setNewStudentData({ ...newStudentData, phone: e.target.value })}
+                placeholder="e.g. 9876543210"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Department</label>
+            <input
+              type="text"
+              value={newStudentData.department}
+              onChange={(e) => setNewStudentData({ ...newStudentData, department: e.target.value })}
+              placeholder="e.g. Computer Science"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+            <input
+              type="text"
+              value={newStudentData.password}
+              onChange={(e) => setNewStudentData({ ...newStudentData, password: e.target.value })}
+              placeholder="Leave blank to auto-generate"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <p className="text-xs text-slate-400 mt-1">Credentials will be emailed to the student automatically.</p>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 hover:from-blue-700 hover:to-indigo-700 transition-all"
+            >
+              {isSubmitting ? 'Adding...' : 'Add Student'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Import Excel Modal */}
+      <Modal isOpen={showImportModal} onClose={handleCloseImportModal} title="Import Students from Excel">
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+            <FileSpreadsheet className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-blue-800 font-medium">Students will be assigned to <strong>{sectionLabel}</strong> — Building <strong>{user?.building || 'N/A'}</strong></p>
+              <p className="text-xs text-blue-600 mt-0.5">Required columns: Name, Email. Optional: Room, Department, Phone, Password</p>
+            </div>
+          </div>
+
+          <button
+            onClick={downloadTemplate}
+            className="inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-800 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Template CSV
+          </button>
+
+          {/* Drop Zone */}
+          {!importResult && (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${
+                isDragging
+                  ? 'border-blue-500 bg-blue-50/50 scale-[1.02]'
+                  : selectedFile
+                  ? 'border-green-300 bg-green-50/50'
+                  : 'border-slate-300 bg-slate-50/50 hover:border-blue-400 hover:bg-blue-50/30'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
+                className="hidden"
+              />
+              {selectedFile ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <FileSpreadsheet className="w-8 h-8 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{selectedFile.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                    className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" /> Remove file
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <div className={`p-4 rounded-full transition-colors ${isDragging ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                    <Upload className={`w-8 h-8 ${isDragging ? 'text-blue-600' : 'text-slate-400'}`} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-700">{isDragging ? 'Drop your file here' : 'Drag & drop your file here'}</p>
+                    <p className="text-xs text-slate-500 mt-1">or <span className="text-blue-600 font-medium">browse files</span> — .xlsx, .xls, .csv (max 5MB)</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Import Result */}
+          {importResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-green-700">{importResult.success}</p>
+                  <p className="text-xs text-green-600 font-medium">Successfully Added</p>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-red-700">{importResult.failed}</p>
+                  <p className="text-xs text-red-600 font-medium">Failed</p>
+                </div>
+              </div>
+              {importResult.errors && importResult.errors.length > 0 && (
+                <div className="bg-red-50/50 border border-red-100 rounded-xl p-4 max-h-40 overflow-y-auto">
+                  <p className="text-sm font-semibold text-red-800 mb-2">Error Details:</p>
+                  {importResult.errors.map((err, i) => (
+                    <div key={i} className="text-xs text-red-700 flex items-start gap-2 mb-1">
+                      <span className="bg-red-100 px-1.5 py-0.5 rounded font-mono font-bold flex-shrink-0">Row {err.row || '?'}</span>
+                      <span>{err.name ? `${err.name}: ` : ''}{err.reason}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            {!importResult ? (
+              <>
+                <button
+                  onClick={handleImport}
+                  disabled={!selectedFile || isImporting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 hover:from-blue-700 hover:to-indigo-700 transition-all"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isImporting ? 'Importing...' : 'Import Students'}
+                </button>
+                <button
+                  onClick={handleCloseImportModal}
+                  className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => { setSelectedFile(null); setImportResult(null); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+                >
+                  <Upload className="w-4 h-4" /> Import Another File
+                </button>
+                <button
+                  onClick={handleCloseImportModal}
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all"
+                >
+                  Done
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   );

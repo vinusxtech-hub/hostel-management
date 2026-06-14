@@ -251,16 +251,23 @@ exports.addStudent = async (req, res) => {
       req.body.building = pick;
     }
 
+    const welcomePassword = password || 'password123';
     const student = await User.create({
       name,
       email,
-      password: password || 'password123',
+      password: welcomePassword,
       role: 'student',
       hostelSection: normalizedSection,
       building: req.body.building || '',
       room: room || '',
       department: department || '',
       phone: phone || ''
+    });
+
+    // Send welcome email using Brevo service
+    const emailService = require('../services/emailService');
+    emailService.sendWelcomeEmail(student.email, student.name, welcomePassword).catch(err => {
+      console.error(`Welcome email send failed for ${student.email}:`, err.message);
     });
 
     res.status(201).json({
@@ -365,10 +372,11 @@ exports.bulkImportStudents = async (req, res) => {
           }
         }
 
+        const importPassword = row.password || Math.random().toString(36).substring(2, 10);
         const student = await User.create({
           name,
           email: email.toLowerCase(),
-          password: row.password || 'password123',
+          password: importPassword,
           role: 'student',
           hostelSection: importedSection,
           building: importedBuilding,
@@ -377,6 +385,12 @@ exports.bulkImportStudents = async (req, res) => {
           phone: row.phone || '',
           parentPhone: row.parentphone || row['parent phone'] || '',
           address: row.address || ''
+        });
+
+        // Trigger welcome email asynchronously
+        const emailService = require('../services/emailService');
+        emailService.sendWelcomeEmail(student.email, student.name, importPassword).catch(err => {
+          console.error(`Welcome email send failed during import for ${student.email}:`, err.message);
         });
 
         results.success++;
@@ -766,6 +780,10 @@ exports.getWardenDetails = async (req, res) => {
     const lateToday = todayRecords.filter(r => r.status === 'Late').length;
     const absentToday = studentCount - presentToday - lateToday;
 
+    // Count leaves approved by this warden
+    const LeaveRequest = require('../models/LeaveRequest');
+    const leavesApproved = await LeaveRequest.countDocuments({ approvedBy: warden._id, status: 'Approved' });
+
     res.json({
       profile,
       stats: {
@@ -778,6 +796,7 @@ exports.getWardenDetails = async (req, res) => {
         sectionPendingResolutions: sectionPendingResolutions,
         resolutionRate,
         noticeCount: notices.length,
+        leavesApproved,
         presentToday,
         lateToday,
         absentToday: Math.max(0, absentToday)
@@ -834,6 +853,64 @@ exports.updateSettings = async (req, res) => {
     res.json(settings);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+};
+
+// @desc    Add a new warden
+// @route   POST /api/admin/wardens
+// @access  Private/Admin
+exports.addWarden = async (req, res) => {
+  try {
+    const { name, email, hostelSection, building, phone, department } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!name || !normalizedEmail) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    // Always auto-generate warden password dynamically
+    const plainPassword = Math.random().toString(36).substring(2, 10) + 'W!';
+
+    const warden = await User.create({
+      name,
+      email: normalizedEmail,
+      password: plainPassword,
+      role: 'warden',
+      hostelSection: hostelSection || '',
+      building: building || '',
+      phone: phone || '',
+      department: department || ''
+    });
+
+    // Send welcome email with credentials asynchronously
+    const emailService = require('../services/emailService');
+    emailService.sendWelcomeEmail(warden.email, warden.name, plainPassword, 'warden').catch(err => {
+      console.error(`Warden welcome email failed for ${warden.email}:`, err.message);
+    });
+
+    res.status(201).json({
+      id: warden._id,
+      name: warden.name,
+      email: warden.email,
+      password: plainPassword,
+      role: warden.role,
+      hostelSection: warden.hostelSection,
+      building: warden.building,
+      phone: warden.phone,
+      department: warden.department
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Failed to add warden' });
   }
 };
 

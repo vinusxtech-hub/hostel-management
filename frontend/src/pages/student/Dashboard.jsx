@@ -7,7 +7,7 @@ import { MapView } from "../../components/MapView";
 import { Modal } from "../../components/Modal";
 import { useGeolocation } from "../../hooks/useGeolocation";
 import { api } from "../../services/api";
-import { MapPin, Clock, CheckCircle, AlertCircle, MapPinOff, RefreshCw, Timer, Lock } from "lucide-react";
+import { MapPin, Clock, CheckCircle, AlertCircle, MapPinOff, RefreshCw, Timer, Lock, QrCode, User, Shield, Calendar } from "lucide-react";
 
 // Helper: parse "HH:MM" into total minutes since midnight
 const parseTimeToMinutes = (timeStr) => {
@@ -35,6 +35,8 @@ export const Dashboard = () => {
   const [settings, setSettings] = useState(null);
   const [timeInfo, setTimeInfo] = useState({ isOpen: false, countdown: 0, progress: 0 });
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [activeLeavePass, setActiveLeavePass] = useState(null);
+  const [leavePassTimeLeft, setLeavePassTimeLeft] = useState(null);
   const { location, error: geoError, isLoading: geoLoading, refreshLocation } = useGeolocation(
     settings?.campusLatitude,
     settings?.campusLongitude,
@@ -118,6 +120,22 @@ export const Dashboard = () => {
       }
     };
     loadSettings();
+
+    // Load active leave pass
+    const loadLeaves = async () => {
+      try {
+        const leaves = await api.student.getLeaves();
+        const now = Date.now();
+        const THREE_HOURS = 3 * 60 * 60 * 1000;
+        const activPass = leaves?.find(
+          (l) => l.status === 'Approved' && l.approvedAt && (now - new Date(l.approvedAt).getTime()) <= THREE_HOURS
+        );
+        setActiveLeavePass(activPass || null);
+      } catch (err) {
+        console.error('Failed to load leaves:', err);
+      }
+    };
+    loadLeaves();
   }, []);
 
   // Tick countdown every second
@@ -126,6 +144,21 @@ export const Dashboard = () => {
     const interval = setInterval(computeTimeInfo, 1000);
     return () => clearInterval(interval);
   }, [computeTimeInfo]);
+
+  // Leave pass countdown
+  useEffect(() => {
+    if (!activeLeavePass?.approvedAt) { setLeavePassTimeLeft(null); return; }
+    const THREE_HOURS_SEC = 3 * 3600;
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(activeLeavePass.approvedAt).getTime()) / 1000);
+      const remaining = Math.max(0, THREE_HOURS_SEC - elapsed);
+      setLeavePassTimeLeft(remaining);
+      if (remaining === 0) setActiveLeavePass(null);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [activeLeavePass]);
 
   useEffect(() => {
     if (geoError) {
@@ -443,6 +476,79 @@ export const Dashboard = () => {
           <RefreshCw className="w-5 h-5" />
         </Button>
       </div>
+
+      {/* Active Leave Pass with QR Code */}
+      {activeLeavePass && leavePassTimeLeft > 0 && (
+        <div className="animate-zoom-in">
+          <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50 overflow-hidden shadow-lg">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-5 py-4 flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-full">
+                <QrCode className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Active Leave Pass</p>
+                <p className="text-white/80 text-sm">Present this QR to the guard at the gate</p>
+              </div>
+              <div className="ml-auto text-right">
+                <p className="text-white font-mono font-bold text-lg">{formatCountdown(leavePassTimeLeft)}</p>
+                <p className="text-white/70 text-xs">remaining</p>
+              </div>
+            </div>
+
+            <div className="p-5 flex flex-col sm:flex-row gap-6 items-center">
+              {/* QR Code */}
+              <div className="flex-shrink-0 bg-white p-3 rounded-2xl shadow-md border border-emerald-100">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeLeavePass.id)}&color=10b981&bgcolor=ffffff`}
+                  alt="Leave Pass QR Code"
+                  className="w-44 h-44 rounded-lg"
+                />
+              </div>
+
+              {/* Details */}
+              <div className="flex-1 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 p-2.5 bg-white rounded-xl border border-emerald-100">
+                    <Calendar className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Reason</p>
+                      <p className="text-xs text-slate-800 font-medium truncate">{activeLeavePass.reason}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2.5 bg-white rounded-xl border border-emerald-100">
+                    <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Type</p>
+                      <p className="text-xs text-slate-800 font-medium">{activeLeavePass.type || 'Leave'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {activeLeavePass.approvedByName && (
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-emerald-100">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                      {activeLeavePass.approvedByName?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Approved by</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {activeLeavePass.approvedByName || 'Staff'}
+                        <span className="ml-1.5 text-xs font-normal text-slate-500 capitalize">({activeLeavePass.approvedByRole})</span>
+                      </p>
+                    </div>
+                    <span className="ml-auto px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">APPROVED</span>
+                  </div>
+                )}
+
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                  <p className="text-xs text-amber-700 font-medium">⚠️ This QR code is valid for 3 hours from approval time. Guard will scan at the gate.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Attendance Result */}
       {attendanceStatus && (
