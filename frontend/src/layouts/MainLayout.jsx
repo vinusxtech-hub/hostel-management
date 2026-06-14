@@ -26,7 +26,6 @@ const studentNavigation = [
   { name: 'Leaves', href: '/leaves', icon: CalendarOff },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Notices', href: '/notices', icon: Megaphone },
-  { name: 'Profile', href: '/profile', icon: User },
 ];
 
 const adminNavigation = [
@@ -44,7 +43,6 @@ const wardenNavigation = [
   { name: 'Resolutions', href: '/warden/resolutions', icon: MessageSquare },
   { name: 'Leaves', href: '/warden/leaves', icon: CalendarOff },
   { name: 'Notices', href: '/warden/notices', icon: Megaphone },
-  { name: 'Profile', href: '/warden/profile', icon: User },
 ];
 
 export const MainLayout = () => {
@@ -74,24 +72,52 @@ export const MainLayout = () => {
           Sistec Hostel
         </div>
         
-        <div className="px-4 py-6 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
-          {navigation.map((item) => {
-            const isActive = location.pathname.startsWith(item.href);
-            return (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  isActive ? "bg-primary-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white",
-                  "group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <item.icon className={cn("mr-3 flex-shrink-0 h-5 w-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
-                {item.name}
-              </NavLink>
-            );
-          })}
+        <div className="flex flex-col h-[calc(100vh-4rem)] justify-between">
+          <nav className="px-4 py-6 space-y-1 overflow-y-auto">
+            {navigation.map((item) => {
+              const isActive = location.pathname.startsWith(item.href);
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    isActive ? "bg-primary-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white",
+                    "group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <item.icon className={cn("mr-3 flex-shrink-0 h-5 w-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
+                  {item.name}
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          {/* Profile & Sign Out */}
+          <div className="p-4 border-t border-slate-700/50">
+            <NavLink
+              to={user?.role === 'warden' ? '/warden/profile' : '/profile'}
+              className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <div className="h-9 w-9 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-300 font-bold text-sm shrink-0">
+                {user?.name?.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+                <p className="text-xs text-slate-400 truncate">
+                  {user?.role === 'admin' ? 'Administrator' : user?.role === 'warden' ? 'Warden' : `Room ${user?.room}`}
+                </p>
+              </div>
+            </NavLink>
+            <button
+              onClick={logout}
+              className="mt-2 w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
 
