@@ -39,13 +39,6 @@ export const Login = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="text-center mb-2">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
-          <LogIn className="w-4 h-4" />
-          Sign in to your account
-        </div>
-      </div>
-
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
           Email Address
@@ -95,6 +88,13 @@ export const Login = () => {
       <p className="text-center text-sm text-slate-600">
         <Link to="/forgot-password" className="text-primary-600 hover:text-primary-700 font-semibold">
           Forgot Password?
+        </Link>
+      </p>
+
+      <p className="text-center text-sm text-slate-600">
+        Don't have an account?{" "}
+        <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-semibold">
+          Sign Up
         </Link>
       </p>
     </form>

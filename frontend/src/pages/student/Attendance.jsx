@@ -12,6 +12,7 @@ export const Attendance = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [settings, setSettings] = useState(null);
   const { error } = useToast();
 
@@ -118,7 +119,7 @@ export const Attendance = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {attendanceHistory.map((record) => (
+                  {(showAll ? attendanceHistory : attendanceHistory.slice(0, 7)).map((record) => (
                     <tr key={record.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-4 px-4 text-sm text-slate-900">{record.date}</td>
                       <td className="py-4 px-4">
@@ -134,6 +135,16 @@ export const Attendance = () => {
                   ))}
                 </tbody>
               </table>
+              {attendanceHistory.length > 7 && (
+                <div className="text-center mt-4">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowAll(!showAll)}
+                  >
+                    {showAll ? "Show Less" : `View All (${attendanceHistory.length})`}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </Card>
