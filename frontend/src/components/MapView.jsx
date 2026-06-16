@@ -1,75 +1,7 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-// Fix Leaflet's default icon path issue with Vite bundlers
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
 
 const HOSTEL_LAT = parseFloat(import.meta.env.VITE_HOSTEL_LAT) || 23.2870;
 const HOSTEL_LNG = parseFloat(import.meta.env.VITE_HOSTEL_LNG) || 77.3370;
-
-// Custom campus pin (red)
-const campusIcon = L.divIcon({
-  className: "",
-  html: `
-    <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)">
-      <div style="
-        background:#ef4444;color:#fff;font-size:10px;font-weight:700;
-        padding:2px 7px;border-radius:6px;margin-bottom:2px;white-space:nowrap;
-        box-shadow:0 1px 6px rgba(0,0,0,0.3);
-      ">Campus Center</div>
-      <svg width="22" height="30" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20S24 21 24 12C24 5.373 18.627 0 12 0z" fill="#ef4444"/>
-        <circle cx="12" cy="12" r="5" fill="#fff"/>
-      </svg>
-    </div>`,
-  iconAnchor: [0, 0],
-  popupAnchor: [0, -10],
-});
-
-// Custom user location pin (blue)
-const userIcon = L.divIcon({
-  className: "",
-  html: `
-    <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)">
-      <div style="
-        background:#3b82f6;color:#fff;font-size:10px;font-weight:700;
-        padding:2px 7px;border-radius:6px;margin-bottom:2px;white-space:nowrap;
-        box-shadow:0 1px 6px rgba(0,0,0,0.3);
-      ">You</div>
-      <svg width="20" height="28" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20S24 21 24 12C24 5.373 18.627 0 12 0z" fill="#3b82f6"/>
-        <circle cx="12" cy="12" r="5" fill="#fff"/>
-      </svg>
-    </div>`,
-  iconAnchor: [0, 0],
-  popupAnchor: [0, -10],
-});
-
-// Auto-adjusts map view whenever the user or campus coords change
-const BoundsUpdater = ({ userLat, userLng, hostelLat, hostelLng }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (userLat && userLng) {
-      const bounds = L.latLngBounds(
-        [userLat, userLng],
-        [hostelLat, hostelLng]
-      );
-      map.fitBounds(bounds, { padding: [60, 60] });
-    } else {
-      map.setView([hostelLat, hostelLng], 16);
-    }
-  }, [map, userLat, userLng, hostelLat, hostelLng]);
-
-  return null;
-};
 
 export const MapView = ({
   userLat,
@@ -82,79 +14,157 @@ export const MapView = ({
   showGeofence = true,
   className = "",
 }) => {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
+  const circleRef = useRef(null);
+
   const hostelLat = campusLat || HOSTEL_LAT;
   const hostelLng = campusLng || HOSTEL_LNG;
   const radius = radiusMeters || 500;
 
+  useEffect(() => {
+    // Ensure google maps is loaded
+    if (!window.google || !window.google.maps) {
+      console.warn("Google Maps JavaScript API is not loaded yet.");
+      return;
+    }
+
+    const campusCenter = { lat: hostelLat, lng: hostelLng };
+
+    // Initialize Map if not already initialized
+    if (!mapInstanceRef.current && mapRef.current) {
+      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        center: campusCenter,
+        zoom: 16,
+        disableDefaultUI: true,
+        zoomControl: true,
+        styles: [
+          {
+            featureType: "poi.business",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }],
+          },
+        ],
+      });
+    }
+
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Clear previous markers & circle
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
+    if (circleRef.current) {
+      circleRef.current.setMap(null);
+      circleRef.current = null;
+    }
+
+    // Geofence Circle
+    if (showGeofence) {
+      circleRef.current = new window.google.maps.Circle({
+        strokeColor: "#6366f1",
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: "#6366f1",
+        fillOpacity: 0.08,
+        map: map,
+        center: campusCenter,
+        radius: radius,
+      });
+    }
+
+    // Campus Center Marker (Red)
+    const campusMarker = new window.google.maps.Marker({
+      position: campusCenter,
+      map: map,
+      title: "SISTec Campus Center",
+      icon: {
+        path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+        fillColor: "#ef4444",
+        fillOpacity: 1,
+        strokeWeight: 1,
+        scale: 6,
+      },
+    });
+
+    const campusInfoWindow = new window.google.maps.InfoWindow({
+      content: `
+        <div style="font-family: Inter, sans-serif; padding: 4px; line-height: 1.4;">
+          <strong style="color: #0f172a; font-size: 13px;">SISTec Campus Center</strong><br/>
+          <span style="color: #64748b; font-size: 11px;">Geofence radius: ${radius}m</span>
+        </div>
+      `,
+    });
+
+    campusMarker.addListener("click", () => {
+      campusInfoWindow.open(map, campusMarker);
+    });
+
+    markersRef.current.push(campusMarker);
+
+    // Bounds calculator
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend(campusCenter);
+
+    // User Location Marker (Blue)
+    if (userLat && userLng) {
+      const userPosition = { lat: userLat, lng: userLng };
+      const userMarker = new window.google.maps.Marker({
+        position: userPosition,
+        map: map,
+        title: "Your Location",
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: "#3b82f6",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+          scale: 8,
+        },
+      });
+
+      const userInfoWindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="font-family: Inter, sans-serif; padding: 4px; line-height: 1.5;">
+            <strong style="color: #0f172a; font-size: 13px;">Your Location</strong><br/>
+            <span style="color: #64748b; font-size: 11px;">${
+              distance ? `${distance} from center` : "Calculating distance..."
+            }</span><br/>
+            <strong style="color: ${isInside ? "#16a34a" : "#dc2626"}; font-size: 11px;">
+              ${isInside ? "✓ Inside campus area" : "✗ Outside campus area"}
+            </strong>
+          </div>
+        `,
+      });
+
+      userMarker.addListener("click", () => {
+        userInfoWindow.open(map, userMarker);
+      });
+
+      markersRef.current.push(userMarker);
+      bounds.extend(userPosition);
+
+      // Fit bounds to show both user and campus
+      map.fitBounds(bounds);
+      
+      // Prevent zooming in too close on fitBounds
+      const listener = window.google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+        if (map.getZoom() > 16) {
+          map.setZoom(16);
+        }
+      });
+    } else {
+      map.setCenter(campusCenter);
+      map.setZoom(16);
+    }
+  }, [userLat, userLng, hostelLat, hostelLng, radius, showGeofence, distance, isInside]);
+
   return (
-    <div className={`overflow-hidden ${className}`} style={{ minHeight: 180 }}>
-      <MapContainer
-        center={[hostelLat, hostelLng]}
-        zoom={16}
-        style={{ width: "100%", height: "100%" }}
-        scrollWheelZoom={false}
-        attributionControl={false}
-      >
-        {/* Free OpenStreetMap tile layer — no API key required */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-        />
-
-        {/* Geofence boundary circle */}
-        {showGeofence && (
-          <Circle
-            center={[hostelLat, hostelLng]}
-            radius={radius}
-            pathOptions={{
-              color: "#6366f1",
-              fillColor: "#6366f1",
-              fillOpacity: 0.08,
-              weight: 2,
-              dashArray: "6 4",
-            }}
-          />
-        )}
-
-        {/* Campus center marker */}
-        <Marker position={[hostelLat, hostelLng]} icon={campusIcon}>
-          <Popup>
-            <strong>SISTec Campus Center</strong>
-            <br />
-            Geofence radius: {radius}m
-          </Popup>
-        </Marker>
-
-        {/* Student current location marker */}
-        {userLat && userLng && (
-          <Marker position={[userLat, userLng]} icon={userIcon}>
-            <Popup>
-              <strong>Your Location</strong>
-              <br />
-              {distance
-                ? `${distance} from campus center`
-                : "Calculating distance..."}
-              <br />
-              <span
-                style={{
-                  color: isInside ? "#16a34a" : "#dc2626",
-                  fontWeight: 600,
-                }}
-              >
-                {isInside ? "✓ Inside campus area" : "✗ Outside campus area"}
-              </span>
-            </Popup>
-          </Marker>
-        )}
-
-        {/* Auto-fit bounds */}
-        <BoundsUpdater
-          userLat={userLat}
-          userLng={userLng}
-          hostelLat={hostelLat}
-          hostelLng={hostelLng}
-        />
-      </MapContainer>
-    </div>
+    <div
+      ref={mapRef}
+      className={`overflow-hidden rounded-b-2xl ${className}`}
+      style={{ width: "100%", height: "100%", minHeight: 180 }}
+    />
   );
 };
