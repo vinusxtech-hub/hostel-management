@@ -10,7 +10,7 @@ const generateRandomPassword = (role) => {
   for (let i = 0; i < 8; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  const suffix = role === 'warden' ? 'W!' : 'S!';
+  const suffix = role === 'warden' ? 'W!' : role === 'guard' ? 'G!' : 'S!';
   return password + suffix;
 };
 
@@ -945,4 +945,190 @@ exports.deleteWarden = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete warden' });
   }
 };
+
+// @desc    Get all guards
+// @route   GET /api/admin/guards
+// @access  Private/Admin
+exports.getGuards = async (req, res) => {
+  try {
+    const guards = await User.find({ role: 'guard' }).sort({ name: 1 });
+    const formatted = guards.map(g => ({
+      id: g._id,
+      name: g.name,
+      email: g.email,
+      phone: g.phone || 'N/A',
+      joinedAt: g.createdAt
+    }));
+    res.json(formatted);
+  } catch (error) {
+    console.error('Get guards error:', error);
+    res.status(500).json({ error: 'Failed to fetch guards' });
+  }
+};
+
+// @desc    Add a new guard
+// @route   POST /api/admin/guards
+// @access  Private/Admin
+exports.addGuard = async (req, res) => {
+  try {
+    const { name, email, phone } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!name || !normalizedEmail) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    const plainPassword = generateRandomPassword('guard');
+
+    const guard = await User.create({
+      name,
+      email: normalizedEmail,
+      password: plainPassword,
+      role: 'guard',
+      phone: phone || ''
+    });
+
+    const emailService = require('../services/emailService');
+    emailService.sendWelcomeEmail(guard.email, guard.name, guard.email, plainPassword, 'guard').catch(err => {
+      console.error(`Guard welcome email failed for ${guard.email}:`, err.message);
+    });
+
+    res.status(201).json({
+      id: guard._id,
+      name: guard.name,
+      email: guard.email,
+      role: guard.role,
+      phone: guard.phone
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Failed to add guard' });
+  }
+};
+
+// @desc    Delete a guard
+// @route   DELETE /api/admin/guards/:id
+// @access  Private/Admin
+exports.deleteGuard = async (req, res) => {
+  try {
+    const guard = await User.findById(req.params.id);
+    if (!guard || guard.role !== 'guard') {
+      return res.status(404).json({ error: 'Guard not found' });
+    }
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Guard removed successfully' });
+  } catch (error) {
+    console.error('Delete guard error:', error);
+    res.status(500).json({ error: 'Failed to delete guard' });
+  }
+};
+
+// @desc    Bulk import guards from Excel file
+// @route   POST /api/admin/guards/bulk-import
+// @access  Private/Admin
+exports.bulkImportGuards = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const XLSX = require('xlsx');
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rows.length) {
+      return res.status(400).json({ error: 'Excel file is empty' });
+    }
+
+    const normalizedRows = rows.map(row => {
+      const normalized = {};
+      Object.keys(row).forEach(key => {
+        normalized[key.trim().toLowerCase()] = String(row[key]).trim();
+      });
+      return normalized;
+    });
+
+    const firstRow = normalizedRows[0];
+    if (!('name' in firstRow) || !('email' in firstRow)) {
+      return res.status(400).json({
+        error: 'Excel file must have "Name" and "Email" columns. Found columns: ' + Object.keys(rows[0]).join(', ')
+      });
+    }
+
+    const results = { success: 0, failed: 0, errors: [], created: [] };
+
+    for (let i = 0; i < normalizedRows.length; i++) {
+      const row = normalizedRows[i];
+      const rowNum = i + 2;
+      const name = row.name;
+      const email = row.email;
+
+      if (!name || !email) {
+        results.failed++;
+        results.errors.push({ row: rowNum, reason: 'Missing name or email' });
+        continue;
+      }
+
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        results.failed++;
+        results.errors.push({ row: rowNum, name, reason: `Invalid email: ${email}` });
+        continue;
+      }
+
+      try {
+        const existing = await User.findOne({ email: email.toLowerCase() });
+        if (existing) {
+          results.failed++;
+          results.errors.push({ row: rowNum, name, reason: `Email already exists: ${email}` });
+          continue;
+        }
+
+        const importPassword = generateRandomPassword('guard');
+
+        const guard = await User.create({
+          name,
+          email: email.toLowerCase(),
+          password: importPassword,
+          role: 'guard',
+          phone: row.phone || ''
+        });
+
+        const emailService = require('../services/emailService');
+        emailService.sendWelcomeEmail(guard.email, guard.name, guard.email, importPassword, 'guard').catch(err => {
+          console.error(`Guard welcome email failed during import for ${guard.email}:`, err.message);
+        });
+
+        results.success++;
+        results.created.push({
+          id: guard._id,
+          name: guard.name,
+          email: guard.email
+        });
+      } catch (err) {
+        results.failed++;
+        results.errors.push({ row: rowNum, name, reason: err.message });
+      }
+    }
+
+    res.status(200).json({
+      message: `Import complete: ${results.success} added, ${results.failed} failed`,
+      totalProcessed: normalizedRows.length,
+      ...results
+    });
+  } catch (error) {
+    console.error('Bulk import guards error:', error);
+    res.status(500).json({ error: 'Failed to process Excel file: ' + error.message });
+  }
+};
+
 

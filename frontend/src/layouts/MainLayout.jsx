@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, Navigate, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
+import { api } from "../services/api";
 import { 
   LayoutDashboard, 
   CalendarCheck, 
@@ -14,6 +15,7 @@ import {
   Users,
   Megaphone,
   Shield,
+  ShieldCheck,
   CalendarOff,
   Settings
 } from "lucide-react";
@@ -36,6 +38,7 @@ const adminNavigation = [
   { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { name: 'Notices', href: '/admin/notices', icon: Megaphone },
   { name: 'Wardens', href: '/admin/wardens', icon: Shield },
+  { name: 'Guards', href: '/admin/guards', icon: ShieldCheck },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
@@ -56,13 +59,99 @@ export const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const navigation = user?.role === 'admin' 
+  const [badges, setBadges] = useState({
+    leaves: 0,
+    resolutions: 0,
+    notices: 0
+  });
+
+  const fetchBadges = async () => {
+    if (!user) return;
+    try {
+      if (user.role === 'admin') {
+        const pendingLeaves = await api.admin.getPendingLeaves().catch(() => []);
+        const allResolutions = await api.admin.getResolutions().catch(() => []);
+        const pendingResCount = allResolutions.filter(r => r.status === 'Pending').length;
+        setBadges({
+          leaves: pendingLeaves.length,
+          resolutions: pendingResCount,
+          notices: 0
+        });
+      } else if (user.role === 'warden') {
+        const pendingLeaves = await api.warden.getPendingLeaves().catch(() => []);
+        const pendingResolutions = await api.warden.getResolutions({ status: 'Pending' }).catch(() => []);
+        setBadges({
+          leaves: pendingLeaves.length,
+          resolutions: pendingResolutions.length,
+          notices: 0
+        });
+      } else if (user.role === 'student') {
+        const allNotices = await api.student.getNotices().catch(() => []);
+        const allLeaves = await api.student.getLeaves().catch(() => []);
+        
+        // Count unread notices
+        const lastSeenCountStr = localStorage.getItem('sistec_notice_count');
+        const lastSeenCount = lastSeenCountStr ? parseInt(lastSeenCountStr, 10) : 0;
+        const newNoticesCount = Math.max(0, allNotices.length - lastSeenCount);
+
+        // Count active approved leaves
+        const activeApprovedCount = allLeaves.filter(l => l.status === 'Approved').length;
+
+        setBadges({
+          leaves: activeApprovedCount,
+          resolutions: 0,
+          notices: newNoticesCount
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to fetch badge counts:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchBadges();
+    // Poll every 15 seconds to keep counts relatively fresh
+    const interval = setInterval(fetchBadges, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Reset notices badge when visiting Notices page, and update localStorage
+  useEffect(() => {
+    if (user?.role === 'student' && location.pathname === '/notices') {
+      const resetNotices = async () => {
+        try {
+          const allNotices = await api.student.getNotices().catch(() => []);
+          localStorage.setItem('sistec_notice_count', String(allNotices.length));
+          setBadges(prev => ({ ...prev, notices: 0 }));
+        } catch (err) {
+          console.warn("Failed to reset notices badge:", err);
+        }
+      };
+      resetNotices();
+    }
+  }, [location.pathname, user]);
+
+  const getBadgeCount = (name) => {
+    switch (name) {
+      case 'Leaves': return badges.leaves;
+      case 'Resolutions': return badges.resolutions;
+      case 'Notices': return badges.notices;
+      default: return 0;
+    }
+  };
+
+  const baseNavigation = user?.role === 'admin' 
     ? adminNavigation 
     : user?.role === 'warden' 
     ? wardenNavigation 
     : user?.role === 'guard'
     ? guardNavigation
     : studentNavigation;
+
+  const navigation = baseNavigation.map(item => ({
+    ...item,
+    badge: getBadgeCount(item.name)
+  }));
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -94,12 +183,22 @@ export const MainLayout = () => {
                   to={item.href}
                   className={cn(
                     isActive ? "bg-primary-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white",
-                    "group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+                    "group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <item.icon className={cn("mr-3 flex-shrink-0 h-5 w-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
-                  {item.name}
+                  <div className="flex items-center">
+                    <item.icon className={cn("mr-3 flex-shrink-0 h-5 w-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
+                    <span>{item.name}</span>
+                  </div>
+                  {item.badge > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 text-[11px] font-bold rounded-full transition-colors",
+                      isActive ? "bg-white text-primary-600" : "bg-red-500 text-white"
+                    )}>
+                      {item.badge}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}

@@ -507,8 +507,8 @@ exports.verifyQrCode = async (req, res) => {
       return res.status(400).json({ error: `QR Code invalid - Leave status is ${leave.status}` });
     }
 
-    if (!leave.approvedAt) {
-      return res.status(400).json({ error: 'QR Code invalid - Missing approval timestamp' });
+    if (leave.scannedAt) {
+      return res.status(400).json({ error: 'This QR Code has already been scanned/used' });
     }
 
     // Check 3 hours expiry
@@ -530,6 +530,11 @@ exports.verifyQrCode = async (req, res) => {
         }
       });
     }
+
+    // QR is valid - log scanning details
+    leave.scannedAt = new Date();
+    leave.scannedBy = req.user._id;
+    await leave.save();
 
     // QR is valid
     res.json({

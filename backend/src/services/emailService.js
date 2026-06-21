@@ -27,13 +27,54 @@ const getTransporter = () => {
  * @returns {Promise}
  */
 const sendBrevoEmail = (payload) => {
-  const transporter = getTransporter();
   const recipientEmail = payload.to?.[0]?.email;
+  const apiKey = process.env.BREVO_API_KEY || 
+    (process.env.SMTP_PASS && process.env.SMTP_PASS.startsWith('xkeysib-') ? process.env.SMTP_PASS : null);
 
+  if (apiKey) {
+    console.log(`[EmailService] Sending email to ${recipientEmail} using Brevo HTTP API...`);
+    // Format payload for Brevo API
+    const apiPayload = {
+      sender: {
+        name: payload.sender.name,
+        email: payload.sender.email
+      },
+      to: payload.to.map(t => ({ email: t.email, name: t.name || '' })),
+      subject: payload.subject,
+      htmlContent: payload.htmlContent
+    };
+
+    return fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(apiPayload)
+    })
+      .then(async (response) => {
+        const text = await response.text();
+        if (!response.ok) {
+          throw new Error(`Brevo HTTP API responded with status ${response.status}: ${text}`);
+        }
+        let data = {};
+        try { data = JSON.parse(text); } catch(e) {}
+        console.log(`[EmailService] Email sent successfully to ${recipientEmail} via HTTP (Msg ID: ${data.messageId || 'N/A'})`);
+        return data;
+      })
+      .catch((err) => {
+        console.error(`[EmailService] Failed to send email to ${recipientEmail} via HTTP API: ${err.message}`);
+        throw err;
+      });
+  }
+
+  // Fallback to standard SMTP if no API key is configured
+  const transporter = getTransporter();
   if (!transporter) {
-    console.warn(`[EmailService] SMTP relay not fully configured. Email to ${recipientEmail} skipped.`);
-    console.log(`[EmailService] Credentials fallback logged to console: email=${recipientEmail}`);
-    return Promise.resolve({ skipped: true });
+    const err = new Error('SMTP relay not fully configured.');
+    console.error(`[EmailService] Failed to send email to ${recipientEmail}: ${err.message}`);
+    return Promise.reject(err);
   }
 
   const mailOptions = {
@@ -45,34 +86,11 @@ const sendBrevoEmail = (payload) => {
 
   return transporter.sendMail(mailOptions)
     .then((info) => {
-      console.log(`[EmailService] Email sent successfully to ${recipientEmail} (Msg ID: ${info.messageId})`);
+      console.log(`[EmailService] Email sent successfully to ${recipientEmail} via SMTP (Msg ID: ${info.messageId})`);
       return info;
     })
-    .catch(async (err) => {
+    .catch((err) => {
       console.error(`[EmailService] Failed to send email to ${recipientEmail} via SMTP: ${err.message}`);
-      
-      // Fallback: save email as local HTML file for developer review
-      try {
-        const tempDir = path.resolve(__dirname, '../../temp/emails');
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
-        }
-        
-        const fileName = `${Date.now()}_${recipientEmail.replace(/[^a-zA-Z0-9]/g, '_')}.html`;
-        const filePath = path.join(tempDir, fileName);
-        
-        fs.writeFileSync(filePath, payload.htmlContent, 'utf8');
-        
-        console.warn('\n========================================================================');
-        console.warn('📬  LOCAL EMAIL FALLBACK GENERATED:');
-        console.warn(`An email to ${recipientEmail} could not be sent via SMTP.`);
-        console.warn(`The HTML email content has been saved locally for preview:`);
-        console.warn(`file:///${filePath.replace(/\\/g, '/')}`);
-        console.warn('========================================================================\n');
-      } catch (fsErr) {
-        console.error('[EmailService] Failed to write local preview HTML file:', fsErr.message);
-      }
-      
       throw err;
     });
 };
@@ -81,10 +99,12 @@ const sendBrevoEmail = (payload) => {
  * Build the HTML for a credentials email.
  */
 const buildCredentialsHtml = ({ name, loginUsername, password, role, portalUrl }) => {
-  const roleLabel = role === 'warden' ? 'Warden' : 'Student';
-  const roleColor = role === 'warden' ? '#7c3aed' : '#4f46e5';
+  const roleLabel = role === 'warden' ? 'Warden' : role === 'guard' ? 'Guard' : 'Student';
+  const roleColor = role === 'warden' ? '#7c3aed' : role === 'guard' ? '#10b981' : '#4f46e5';
   const roleDesc = role === 'warden'
     ? 'You can now log in to manage students, approve leaves, and handle hostel administration.'
+    : role === 'guard'
+    ? 'You can now log in to verify student leave passes and scan gate QR codes.'
     : 'You can now log in to mark geofenced attendance, apply for leaves, and track your activity.';
 
   return `

@@ -46,4 +46,10 @@ router.post('/wardens', adminController.addWarden);
 router.get('/wardens/:id', adminController.getWardenDetails);
 router.delete('/wardens/:id', adminController.deleteWarden);
 
+// Guard management routes
+router.get('/guards', adminController.getGuards);
+router.post('/guards', adminController.addGuard);
+router.delete('/guards/:id', adminController.deleteGuard);
+router.post('/guards/bulk-import', upload.single('file'), adminController.bulkImportGuards);
+
 module.exports = router;

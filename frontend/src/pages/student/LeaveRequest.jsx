@@ -16,7 +16,8 @@ import {
   FileText,
   X,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  QrCode
 } from "lucide-react";
 
 // ============================================================
@@ -38,6 +39,7 @@ export const LeaveRequest = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { success, error } = useToast();
+  const [selectedLeaveForQR, setSelectedLeaveForQR] = useState(null);
 
   useEffect(() => {
     fetchLeaves();
@@ -320,6 +322,16 @@ export const LeaveRequest = () => {
                         Cancel
                       </Button>
                     )}
+                    {leave.status === "Approved" && (
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => setSelectedLeaveForQR(leave)}
+                      >
+                        <QrCode className="w-3.5 h-3.5 mr-1" />
+                        View QR Pass
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -437,6 +449,103 @@ export const LeaveRequest = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* QR Pass Modal */}
+      <Modal 
+        isOpen={!!selectedLeaveForQR} 
+        onClose={() => setSelectedLeaveForQR(null)} 
+        title="🏛️ Approved Leave QR Pass" 
+        className="max-w-md"
+      >
+        {selectedLeaveForQR && (() => {
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedLeaveForQR.id)}`;
+          const days = getDayCount(selectedLeaveForQR.startDate, selectedLeaveForQR.endDate);
+          const approvalTime = selectedLeaveForQR.approvedAt ? new Date(selectedLeaveForQR.approvedAt) : null;
+          const expiryTime = approvalTime ? new Date(approvalTime.getTime() + 3 * 60 * 60 * 1000) : null;
+
+          const formatTimeStr = (date) => {
+            return date ? date.toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+          };
+
+          const handlePrint = () => {
+            const printContent = document.getElementById("qr-pass-content").innerHTML;
+            const originalContent = document.body.innerHTML;
+            document.body.innerHTML = `
+              <div style="font-family: sans-serif; padding: 40px; text-align: center; color: #334155;">
+                ${printContent}
+              </div>
+            `;
+            window.print();
+            window.location.reload(); // Reload to restore page state
+          };
+
+          return (
+            <div className="space-y-6 text-center">
+              <div id="qr-pass-content" className="space-y-5">
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 shadow-sm inline-block">
+                  <img 
+                    src={qrUrl} 
+                    alt="Leave QR Pass" 
+                    className="w-48 h-48 mx-auto border-4 border-white rounded-xl shadow-md"
+                  />
+                  <p className="text-[11px] font-mono text-slate-400 mt-3 break-all bg-slate-100/50 py-1 px-2 rounded-lg border border-slate-200/50">
+                    Token: {selectedLeaveForQR.id}
+                  </p>
+                </div>
+
+                <div className="text-left space-y-3 bg-slate-50 border border-slate-200/60 rounded-2xl p-5 text-sm">
+                  <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="font-semibold text-slate-500">Leave Period</span>
+                    <span className="font-bold text-slate-800">
+                      {formatDate(selectedLeaveForQR.startDate)} to {formatDate(selectedLeaveForQR.endDate)} ({days} day{days > 1 ? 's' : ''})
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="font-semibold text-slate-500">Reason</span>
+                    <span className="font-medium text-slate-700 truncate max-w-[200px]" title={selectedLeaveForQR.reason}>
+                      {selectedLeaveForQR.reason}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="font-semibold text-slate-500">Approved By</span>
+                    <span className="font-semibold text-indigo-700">
+                      {selectedLeaveForQR.approvedByName || 'Hostel Warden'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-2">
+                    <span className="font-semibold text-slate-500">Approved At</span>
+                    <span className="font-medium text-slate-700">
+                      {approvalTime ? `${formatDate(approvalTime)} at ${formatTimeStr(approvalTime)}` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-red-600 bg-red-50 border border-red-100/60 p-2.5 rounded-xl">
+                    <span className="font-bold">Pass Expires At</span>
+                    <span className="font-black">
+                      {expiryTime ? `${formatDate(expiryTime)} at ${formatTimeStr(expiryTime)}` : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-xs text-slate-400 bg-amber-50 border border-amber-100 rounded-xl p-3.5 flex items-start gap-2.5 text-left">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Important:</strong> Show this QR code to the hostel guard at the gate. It is valid for exactly <strong>3 hours</strong> from the time of approval. If it expires, you must apply for a new pass or contact the warden.
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button onClick={handlePrint} className="flex-1">
+                  Print / Save Pass
+                </Button>
+                <Button variant="secondary" onClick={() => setSelectedLeaveForQR(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );

@@ -48,6 +48,15 @@ const leaveRequestSchema = new mongoose.Schema({
   documentUrl: {
     type: String,
     default: ''  // Base64 data URI for optional proof/document
+  },
+  scannedAt: {
+    type: Date,
+    default: null
+  },
+  scannedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true

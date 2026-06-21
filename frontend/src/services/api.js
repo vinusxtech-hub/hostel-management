@@ -331,6 +331,12 @@ export const api = {
       });
       return handleResponse(response);
     },
+    getPendingLeaves: async () => {
+      const response = await fetch(`${BASE_URL}/admin/leaves`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
     getLeaves: async () => {
       const response = await fetch(`${BASE_URL}/admin/leaves/all`, {
         headers: authHeaders(),
@@ -350,6 +356,39 @@ export const api = {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    getGuards: async () => {
+      const response = await fetch(`${BASE_URL}/admin/guards`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    addGuard: async (data) => {
+      const response = await fetch(`${BASE_URL}/admin/guards`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+    deleteGuard: async (id) => {
+      const response = await fetch(`${BASE_URL}/admin/guards/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    bulkImportGuards: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${BASE_URL}/admin/guards/bulk-import`, {
+        method: 'POST',
+        headers: {
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
+        },
+        body: formData,
       });
       return handleResponse(response);
     }
