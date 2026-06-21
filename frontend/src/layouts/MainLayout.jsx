@@ -40,6 +40,7 @@ const adminNavigation = [
   { name: 'Wardens', href: '/admin/wardens', icon: Shield },
   { name: 'Guards', href: '/admin/guards', icon: ShieldCheck },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
+  { name: 'Scan History', href: '/admin/scan-history', icon: History },
 ];
 
 const wardenNavigation = [
@@ -48,10 +49,12 @@ const wardenNavigation = [
   { name: 'Resolutions', href: '/warden/resolutions', icon: MessageSquare },
   { name: 'Leaves', href: '/warden/leaves', icon: CalendarOff },
   { name: 'Notices', href: '/warden/notices', icon: Megaphone },
+  { name: 'Scan History', href: '/warden/scan-history', icon: History },
 ];
 
 const guardNavigation = [
   { name: 'Scan QR', href: '/guard/dashboard', icon: LayoutDashboard },
+  { name: 'Scan History', href: '/guard/history', icon: History },
 ];
 
 export const MainLayout = () => {

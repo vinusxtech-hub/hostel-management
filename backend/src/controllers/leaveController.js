@@ -496,7 +496,7 @@ exports.verifyQrCode = async (req, res) => {
     }
 
     const leave = await LeaveRequest.findById(token)
-      .populate('studentId', 'name email room department hostelSection building phone')
+      .populate('studentId', 'name email room department hostelSection building phone year')
       .populate('approvedBy', 'name role');
 
     if (!leave) {
@@ -546,6 +546,7 @@ exports.verifyQrCode = async (req, res) => {
       hostelSection: leave.studentId?.hostelSection || '',
       building: leave.studentId?.building || '',
       phone: leave.studentId?.phone || 'N/A',
+      year: leave.studentId?.year || 'N/A',
       reason: leave.reason,
       startDate: leave.startDate,
       endDate: leave.endDate,
@@ -558,5 +559,114 @@ exports.verifyQrCode = async (req, res) => {
   } catch (error) {
     console.error('Verify QR error:', error);
     res.status(500).json({ error: 'Server error during QR verification' });
+  }
+};
+
+// @desc    Get scanning history for logged-in guard
+// @route   GET /api/guard/history
+// @access  Private/Guard
+exports.getGuardHistory = async (req, res) => {
+  try {
+    const history = await LeaveRequest.find({ scannedBy: req.user._id })
+      .populate('studentId', 'name email room department hostelSection building phone year')
+      .sort({ scannedAt: -1 });
+
+    const formatted = history.map(l => ({
+      id: l._id,
+      studentName: l.studentId?.name || 'Unknown',
+      studentEmail: l.studentId?.email || '',
+      studentRoom: l.studentId?.room || 'N/A',
+      studentDepartment: l.studentId?.department || 'N/A',
+      studentBuilding: l.studentId?.building || '',
+      studentPhone: l.studentId?.phone || 'N/A',
+      studentYear: l.studentId?.year || 'N/A',
+      hostelSection: l.studentId?.hostelSection || '',
+      reason: l.reason,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      status: l.status,
+      scannedAt: l.scannedAt
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Get guard history error:', error);
+    res.status(500).json({ error: 'Failed to fetch scanning history' });
+  }
+};
+
+// @desc    Get all scanning history for Admin
+// @route   GET /api/admin/scan-history
+// @access  Private/Admin
+exports.getAdminScanHistory = async (req, res) => {
+  try {
+    const history = await LeaveRequest.find({ scannedAt: { $ne: null } })
+      .populate('studentId', 'name email room department hostelSection building phone year')
+      .populate('scannedBy', 'name email')
+      .sort({ scannedAt: -1 });
+
+    const formatted = history.map(l => ({
+      id: l._id,
+      studentName: l.studentId?.name || 'Unknown',
+      studentEmail: l.studentId?.email || '',
+      studentRoom: l.studentId?.room || 'N/A',
+      studentDepartment: l.studentId?.department || 'N/A',
+      studentBuilding: l.studentId?.building || '',
+      studentPhone: l.studentId?.phone || 'N/A',
+      studentYear: l.studentId?.year || 'N/A',
+      hostelSection: l.studentId?.hostelSection || '',
+      reason: l.reason,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      status: l.status,
+      scannedAt: l.scannedAt,
+      scannedByName: l.scannedBy?.name || 'Guard'
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Get admin scan history error:', error);
+    res.status(500).json({ error: 'Failed to fetch scan history' });
+  }
+};
+
+// @desc    Get scanning history for Warden (filtered by their hostel section)
+// @route   GET /api/warden/scan-history
+// @access  Private/Warden
+exports.getWardenScanHistory = async (req, res) => {
+  try {
+    const wardenSection = normalizeHostelSection(req.user.hostelSection);
+    const studentIds = await getStudentIdsForSection(wardenSection);
+
+    const history = await LeaveRequest.find({
+      scannedAt: { $ne: null },
+      studentId: { $in: studentIds }
+    })
+      .populate('studentId', 'name email room department hostelSection building phone year')
+      .populate('scannedBy', 'name email')
+      .sort({ scannedAt: -1 });
+
+    const formatted = history.map(l => ({
+      id: l._id,
+      studentName: l.studentId?.name || 'Unknown',
+      studentEmail: l.studentId?.email || '',
+      studentRoom: l.studentId?.room || 'N/A',
+      studentDepartment: l.studentId?.department || 'N/A',
+      studentBuilding: l.studentId?.building || '',
+      studentPhone: l.studentId?.phone || 'N/A',
+      studentYear: l.studentId?.year || 'N/A',
+      hostelSection: l.studentId?.hostelSection || '',
+      reason: l.reason,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      status: l.status,
+      scannedAt: l.scannedAt,
+      scannedByName: l.scannedBy?.name || 'Guard'
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Get warden scan history error:', error);
+    res.status(500).json({ error: 'Failed to fetch scan history' });
   }
 };

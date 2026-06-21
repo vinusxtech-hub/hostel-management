@@ -16,6 +16,7 @@ import { ResetPassword } from "./pages/auth/ResetPassword";
 
 // Guard Pages
 import { GuardDashboard } from "./pages/guard/Dashboard";
+import { GuardHistory } from "./pages/guard/History";
 
 // Student Pages
 import { Dashboard as StudentDashboard } from "./pages/student/Dashboard";
@@ -43,6 +44,8 @@ import { WardenStudents } from "./pages/warden/Students";
 import { WardenResolutions } from "./pages/warden/Resolutions";
 import { WardenNotices } from "./pages/warden/Notices";
 import { WardenLeaves } from "./pages/warden/Leaves";  
+import { AdminScanHistory } from "./pages/admin/ScanHistory";
+import { WardenScanHistory } from "./pages/warden/ScanHistory";
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -93,6 +96,7 @@ function AppContent() {
           <Route path="wardens" element={<AdminWardens />} />
           <Route path="guards" element={<AdminGuards />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="scan-history" element={<AdminScanHistory />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
@@ -103,12 +107,13 @@ function AppContent() {
           <Route path="resolutions" element={<WardenResolutions />} />
           <Route path="notices" element={<WardenNotices />} />
           <Route path="leaves" element={<WardenLeaves />} />
+          <Route path="scan-history" element={<WardenScanHistory />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        {/* Guard Routes */}
         <Route path="/guard" element={<ProtectedRoute requiredRole="guard"><MainLayout /></ProtectedRoute>}>
           <Route path="dashboard" element={<GuardDashboard />} />
+          <Route path="history" element={<GuardHistory />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

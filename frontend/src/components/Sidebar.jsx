@@ -12,6 +12,7 @@ import {
   User,
   Shield,
   CalendarOff,
+  History,
   X
 } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -32,7 +33,8 @@ const adminLinks = [
   { icon: CheckSquare, label: "Attendance", path: "/admin/attendance" },
   { icon: BarChart3, label: "Reports", path: "/admin/reports" },
   { icon: Megaphone, label: "Notices", path: "/admin/notices" },
-  { icon: Shield, label: "Wardens", path: "/admin/wardens" }
+  { icon: Shield, label: "Wardens", path: "/admin/wardens" },
+  { icon: History, label: "Scan History", path: "/admin/scan-history" }
 ];
 
 const wardenLinks = [
@@ -41,6 +43,7 @@ const wardenLinks = [
   { icon: MessageSquare, label: "Resolutions", path: "/warden/resolutions" },
   { icon: CalendarOff, label: "Leaves", path: "/warden/leaves" },
   { icon: Megaphone, label: "Notices", path: "/warden/notices" },
+  { icon: History, label: "Scan History", path: "/warden/scan-history" },
   { icon: User, label: "Profile", path: "/warden/profile" }
 ];
 

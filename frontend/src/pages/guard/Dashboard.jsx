@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../services/api";
 import { useToast } from "../../hooks/useToast";
 import {
@@ -27,10 +28,29 @@ export const GuardDashboard = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [selectedYearFilter, setSelectedYearFilter] = useState("all");
+
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
   const { error: showError } = useToast();
+
+  const fetchHistory = async () => {
+    try {
+      const data = await api.guard.getHistory();
+      setHistory(data);
+    } catch (err) {
+      console.error("Failed to load history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   // Countdown for QR validity
   useEffect(() => {
@@ -68,6 +88,7 @@ export const GuardDashboard = () => {
           department: data.department || 'N/A',
           phone: data.phone || 'N/A',
           hostelSection: data.hostelSection || '',
+          year: data.year || 'N/A',
         } : null,
         approvedBy: data.valid ? {
           name: data.approvedBy || 'Staff',
@@ -77,6 +98,9 @@ export const GuardDashboard = () => {
         expiresAt: data.expiresAt || null,
       };
       setResult(normalized);
+      if (data.valid) {
+        fetchHistory(); // refresh history list on successful QR scan
+      }
     } catch (err) {
       setResult({ valid: false, reason: err.message || "Verification failed" });
     } finally {
@@ -160,7 +184,7 @@ export const GuardDashboard = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-2xl mx-auto pb-10">
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 shadow-xl shadow-violet-500/30 mb-4">
@@ -332,7 +356,7 @@ export const GuardDashboard = () => {
               >
                 <div className="flex items-center gap-2">
                   <Clock
-                    className={`w-4 h-4 ${
+                     className={`w-4 h-4 ${
                       timeLeft > 300
                         ? "text-green-600"
                         : timeLeft > 0
@@ -377,8 +401,8 @@ export const GuardDashboard = () => {
                     { icon: Phone, label: "Phone", value: result.student.phone || "N/A" },
                     {
                       icon: Shield,
-                      label: "Section",
-                      value: result.student.hostelSection === "boys" ? "Boys Hostel" : result.student.hostelSection === "girls" ? "Girls Hostel" : result.student.hostelSection || "N/A",
+                      label: "Section & Year",
+                      value: `${result.student.hostelSection === "boys" ? "Boys Hostel" : result.student.hostelSection === "girls" ? "Girls Hostel" : result.student.hostelSection || "N/A"} (${result.student.year || "N/A"})`,
                     },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
@@ -445,6 +469,112 @@ export const GuardDashboard = () => {
           )}
         </div>
       )}
+
+      {/* Scan History Section */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 border-b border-slate-100 gap-3 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-indigo-500" />
+            <span className="font-semibold text-slate-800">Recent Scans</span>
+            <span className="text-xs font-semibold px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
+              {history.length > 3 ? `Showing 3 of ${history.length}` : `${history.length} total`}
+            </span>
+          </div>
+          {/* Year Filter Tabs */}
+          <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs gap-0.5 self-start sm:self-center">
+            {["all", "1st Year", "2nd Year", "3rd Year", "4th Year"].map((yr) => (
+              <button
+                key={yr}
+                onClick={() => setSelectedYearFilter(yr)}
+                className={`px-2.5 py-1.5 font-medium rounded-md transition-all ${
+                  selectedYearFilter === yr
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-850"
+                }`}
+              >
+                {yr === "all" ? "All Years" : yr}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {historyLoading ? (
+          <div className="p-10 text-center text-slate-400">
+            <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-slate-300" />
+            <p className="text-sm font-medium">Loading history...</p>
+          </div>
+        ) : (
+          (() => {
+            const filteredHistory = history.filter((item) => {
+              if (selectedYearFilter === "all") return true;
+              return item.studentYear === selectedYearFilter;
+            });
+
+            if (filteredHistory.length === 0) {
+              return (
+                <div className="p-12 text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 mb-3">
+                    <ScanLine className="w-6 h-6 text-slate-300" />
+                  </div>
+                  <p className="text-slate-500 font-medium">No scan logs found</p>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    {selectedYearFilter === "all"
+                      ? "Scan a QR pass or enter a token to verify a leave request."
+                      : `No logs for ${selectedYearFilter} students yet.`}
+                  </p>
+                </div>
+              );
+            }
+
+            const recentHistory = filteredHistory.slice(0, 3);
+
+            return (
+              <div className="divide-y divide-slate-100">
+                {recentHistory.map((item) => (
+                  <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/15 border border-indigo-200/40 flex items-center justify-center text-indigo-700 font-bold shrink-0 shadow-sm">
+                        {item.studentName?.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-slate-800 text-sm truncate">{item.studentName}</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-md shrink-0">
+                            {item.studentYear || "N/A"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
+                          Room {item.studentRoom} • Building {item.studentBuilding || "N/A"} • {item.studentDepartment}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full mb-1">
+                        {item.reason}
+                      </span>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">
+                        {new Date(item.scannedAt).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <div className="p-4 text-center bg-slate-50/50 border-t border-slate-100">
+                  <Link
+                    to="/guard/history"
+                    className="text-sm font-semibold text-indigo-650 hover:text-indigo-750 transition-colors inline-flex items-center gap-1"
+                  >
+                    View All Scan History &rarr;
+                  </Link>
+                </div>
+              </div>
+            );
+          })()
+        )}
+      </div>
     </div>
   );
 };

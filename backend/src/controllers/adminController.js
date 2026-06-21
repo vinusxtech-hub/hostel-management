@@ -28,6 +28,15 @@ const normalizeBuilding = (value) => {
   return '';
 };
 
+const normalizeYear = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['1', '1st', 'first', '1st year', 'first year'].includes(normalized)) return '1st Year';
+  if (['2', '2nd', 'second', '2nd year', 'second year'].includes(normalized)) return '2nd Year';
+  if (['3', '3rd', 'third', '3rd year', 'third year'].includes(normalized)) return '3rd Year';
+  if (['4', '4th', 'fourth', '4th year', 'fourth year'].includes(normalized)) return '4th Year';
+  return '';
+};
+
 // @desc    Get dashboard stats
 // @route   GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
@@ -89,7 +98,28 @@ exports.getDashboardStats = async (req, res) => {
 // @route   GET /api/admin/students
 exports.getStudents = async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' }).sort({ name: 1 });
+    // Get Wardens created by this Admin (and legacy wardens)
+    const wardens = await User.find({
+      role: 'warden',
+      $or: [
+        { createdBy: req.user._id },
+        { createdBy: { $exists: false } },
+        { createdBy: null }
+      ]
+    });
+    const wardenIds = wardens.map(w => w._id);
+
+    // Query students created by this admin, their wardens, or legacy students
+    const students = await User.find({
+      role: 'student',
+      $or: [
+        { createdBy: req.user._id },
+        { createdBy: { $in: wardenIds } },
+        { createdBy: { $exists: false } },
+        { createdBy: null }
+      ]
+    }).sort({ name: 1 });
+
     const today = new Date().toISOString().split('T')[0];
 
     const result = await Promise.all(students.map(async (student) => {
@@ -104,6 +134,16 @@ exports.getStudents = async (req, res) => {
       });
       const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
 
+      // Count monthly leaves (approved in last 30 days)
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+      const LeaveRequest = require('../models/LeaveRequest');
+      const monthlyLeaves = await LeaveRequest.countDocuments({
+        studentId: student._id,
+        status: 'Approved',
+        startDate: { $gte: oneMonthAgo }
+      });
+
       return {
         id: student._id,
         name: student.name,
@@ -113,8 +153,10 @@ exports.getStudents = async (req, res) => {
         room: student.room || 'N/A',
         department: student.department || 'N/A',
         phone: student.phone,
+        year: student.year || '',
         attendanceRate: `${rate}%`,
-        status: todayRecord ? 'Inside' : 'Outside'
+        status: todayRecord ? 'Inside' : 'Outside',
+        monthlyLeaves
       };
     }));
 
@@ -131,6 +173,24 @@ exports.getStudentDetails = async (req, res) => {
     const student = await User.findById(req.params.id);
     if (!student || student.role !== 'student') {
       return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Creator isolation verification
+    const wardens = await User.find({
+      role: 'warden',
+      $or: [
+        { createdBy: req.user._id },
+        { createdBy: { $exists: false } },
+        { createdBy: null }
+      ]
+    });
+    const wardenIds = wardens.map(w => w._id.toString());
+    const isCreator = student.createdBy?.toString() === req.user._id.toString();
+    const isWardenCreator = student.createdBy && wardenIds.includes(student.createdBy.toString());
+    const isLegacy = !student.createdBy;
+
+    if (!isCreator && !isWardenCreator && !isLegacy) {
+      return res.status(403).json({ error: 'Access denied: Student managed by another admin group' });
     }
 
     // Get attendance history (last 30 days)
@@ -169,6 +229,16 @@ exports.getStudentDetails = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
 
+    // Count monthly leaves (approved in last 30 days)
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+    const LeaveRequest = require('../models/LeaveRequest');
+    const monthlyLeaves = await LeaveRequest.countDocuments({
+      studentId: student._id,
+      status: 'Approved',
+      startDate: { $gte: oneMonthAgo }
+    });
+
     res.json({
       student: {
         id: student._id,
@@ -181,8 +251,10 @@ exports.getStudentDetails = async (req, res) => {
         phone: student.phone || 'N/A',
         parentPhone: student.parentPhone || 'N/A',
         address: student.address || 'N/A',
+        year: student.year || '',
         createdAt: student.createdAt,
-        todayStatus: todayRecord ? todayRecord.status : 'Absent'
+        todayStatus: todayRecord ? todayRecord.status : 'Absent',
+        monthlyLeaves
       },
       attendance: {
         rate,
@@ -229,7 +301,7 @@ exports.getStudentDetails = async (req, res) => {
 // @route   POST /api/admin/students
 exports.addStudent = async (req, res) => {
   try {
-    const { name, email, room, department, phone, hostelSection, building } = req.body;
+    const { name, email, room, department, phone, hostelSection, building, year } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
     if (!name || !normalizedEmail) {
@@ -276,7 +348,9 @@ exports.addStudent = async (req, res) => {
       building: req.body.building || '',
       room: room || '',
       department: department || '',
-      phone: phone || ''
+      phone: phone || '',
+      year: normalizeYear(year),
+      createdBy: req.user._id
     });
 
     // Send welcome email with credentials to their email asynchronously
@@ -293,6 +367,7 @@ exports.addStudent = async (req, res) => {
       building: student.building || '',
       room: student.room,
       department: student.department,
+      year: student.year || '',
       attendanceRate: '100%',
       status: 'Outside'
     });
@@ -368,6 +443,7 @@ exports.bulkImportStudents = async (req, res) => {
 
         const importedSection = normalizeHostelSection(row.hostelsection || row.section || row.gender);
         let importedBuilding = String(row.building || '').trim().toUpperCase();
+        const importedYear = normalizeYear(row.year || row['class year'] || row.class);
 
         // Validate building rules per section
         if (importedSection === 'boys') {
@@ -400,7 +476,9 @@ exports.bulkImportStudents = async (req, res) => {
           department: row.department || '',
           phone: row.phone || '',
           parentPhone: row.parentphone || row['parent phone'] || '',
-          address: row.address || ''
+          address: row.address || '',
+          year: importedYear,
+          createdBy: req.user._id
         });
 
         // Trigger welcome email asynchronously
@@ -642,9 +720,17 @@ exports.updateResolution = exports.updateResolution;
 
 // @desc    Get all wardens with work stats
 // @route   GET /api/admin/wardens
+// @access  Private/Admin
 exports.getWardens = async (req, res) => {
   try {
-    const wardens = await User.find({ role: 'warden' }).sort({ name: 1 });
+    const wardens = await User.find({
+      role: 'warden',
+      $or: [
+        { createdBy: req.user._id },
+        { createdBy: { $exists: false } },
+        { createdBy: null }
+      ]
+    }).sort({ name: 1 });
 
     const result = await Promise.all(wardens.map(async (warden) => {
       const sectionFilter = warden.hostelSection ? { hostelSection: normalizeHostelSection(warden.hostelSection) } : {};
@@ -719,6 +805,10 @@ exports.getWardenDetails = async (req, res) => {
     const warden = await User.findById(req.params.id);
     if (!warden || warden.role !== 'warden') {
       return res.status(404).json({ error: 'Warden not found' });
+    }
+
+    if (warden.createdBy && warden.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Access denied: Warden managed by another admin' });
     }
 
     // Profile
@@ -901,7 +991,8 @@ exports.addWarden = async (req, res) => {
       hostelSection: hostelSection || '',
       building: building || '',
       phone: phone || '',
-      department: department || ''
+      department: department || '',
+      createdBy: req.user._id
     });
 
     // Send welcome email with credentials to their email asynchronously
@@ -937,6 +1028,9 @@ exports.deleteWarden = async (req, res) => {
     const warden = await User.findById(req.params.id);
     if (!warden || warden.role !== 'warden') {
       return res.status(404).json({ error: 'Warden not found' });
+    }
+    if (warden.createdBy && warden.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Access denied: Warden managed by another admin' });
     }
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'Warden removed successfully' });

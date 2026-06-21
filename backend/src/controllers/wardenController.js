@@ -27,6 +27,15 @@ const normalizeBuilding = (value) => {
   return '';
 };
 
+const normalizeYear = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['1', '1st', 'first', '1st year', 'first year'].includes(normalized)) return '1st Year';
+  if (['2', '2nd', 'second', '2nd year', 'second year'].includes(normalized)) return '2nd Year';
+  if (['3', '3rd', 'third', '3rd year', 'third year'].includes(normalized)) return '3rd Year';
+  if (['4', '4th', 'fourth', '4th year', 'fourth year'].includes(normalized)) return '4th Year';
+  return '';
+};
+
 const getWardenStudentFilter = (user) => {
   const filter = {};
   const hostelSection = normalizeHostelSection(user?.hostelSection);
@@ -165,6 +174,15 @@ exports.getStudents = async (req, res) => {
       const resolutionCount = await Resolution.countDocuments({ userId: student._id });
       const pendingResolutionCount = await Resolution.countDocuments({ userId: student._id, status: 'Pending' });
 
+      // Count monthly leaves (approved in last 30 days)
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+      const monthlyLeaves = await LeaveRequest.countDocuments({
+        studentId: student._id,
+        status: 'Approved',
+        startDate: { $gte: oneMonthAgo }
+      });
+
       return {
         id: student._id,
         name: student.name,
@@ -176,10 +194,12 @@ exports.getStudents = async (req, res) => {
         phone: student.phone || 'N/A',
         parentPhone: student.parentPhone || 'N/A',
         address: student.address || 'N/A',
+        year: student.year || '',
         attendanceRate: rate,
         status: todayRecord ? 'Inside' : 'Outside',
         totalResolutions: resolutionCount,
-        pendingResolutions: pendingResolutionCount
+        pendingResolutions: pendingResolutionCount,
+        monthlyLeaves
       };
     }));
 
@@ -241,6 +261,15 @@ exports.getStudentDetails = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
 
+    // Count monthly leaves (approved in last 30 days)
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+    const monthlyLeaves = await LeaveRequest.countDocuments({
+      studentId: student._id,
+      status: 'Approved',
+      startDate: { $gte: oneMonthAgo }
+    });
+
     res.json({
       student: {
         id: student._id,
@@ -253,8 +282,10 @@ exports.getStudentDetails = async (req, res) => {
         phone: student.phone || 'N/A',
         parentPhone: student.parentPhone || 'N/A',
         address: student.address || 'N/A',
+        year: student.year || '',
         createdAt: student.createdAt,
-        todayStatus: todayRecord ? todayRecord.status : 'Absent'
+        todayStatus: todayRecord ? todayRecord.status : 'Absent',
+        monthlyLeaves
       },
       attendance: {
         rate,
@@ -410,7 +441,7 @@ exports.updateResolution = exports.updateResolution;
 // @access  Private/Warden
 exports.addStudent = async (req, res) => {
   try {
-    const { name, email, room, department, phone } = req.body;
+    const { name, email, room, department, phone, year } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
     if (!name || !normalizedEmail) {
@@ -438,7 +469,9 @@ exports.addStudent = async (req, res) => {
       building: wardenBuilding,
       room: room || '',
       department: department || '',
-      phone: phone || ''
+      phone: phone || '',
+      year: normalizeYear(year),
+      createdBy: req.user._id
     });
 
     // Send welcome email with credentials to their email asynchronously
@@ -455,6 +488,7 @@ exports.addStudent = async (req, res) => {
       building: student.building || '',
       room: student.room,
       department: student.department,
+      year: student.year || '',
       attendanceRate: '100%',
       status: 'Outside'
     });
@@ -531,6 +565,7 @@ exports.bulkImportStudents = async (req, res) => {
           continue;
         }
 
+        const importedYear = normalizeYear(row.year || row['class year'] || row.class);
         const importPassword = generateRandomPassword('student');
 
         const student = await User.create({
@@ -544,7 +579,9 @@ exports.bulkImportStudents = async (req, res) => {
           department: row.department || '',
           phone: row.phone || '',
           parentPhone: row.parentphone || row['parent phone'] || '',
-          address: row.address || ''
+          address: row.address || '',
+          year: importedYear,
+          createdBy: req.user._id
         });
 
         // Trigger welcome email asynchronously

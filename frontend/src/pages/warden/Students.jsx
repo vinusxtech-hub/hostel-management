@@ -54,7 +54,7 @@ export const WardenStudents = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newStudentData, setNewStudentData] = useState({ name: "", room: "", email: "", phone: "", department: "", password: "" });
+  const [newStudentData, setNewStudentData] = useState({ name: "", room: "", email: "", phone: "", department: "", password: "", year: "" });
   const fileInputRef = useRef(null);
 
   // Excel import state
@@ -65,8 +65,8 @@ export const WardenStudents = () => {
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
-    if (!newStudentData.name || !newStudentData.email) {
-      showError("Name and email are required");
+    if (!newStudentData.name || !newStudentData.email || !newStudentData.year) {
+      showError("Name, email and year are required");
       return;
     }
     setIsSubmitting(true);
@@ -74,7 +74,7 @@ export const WardenStudents = () => {
       await api.warden.addStudent(newStudentData);
       success("Student added successfully!");
       setShowAddModal(false);
-      setNewStudentData({ name: "", room: "", email: "", phone: "", department: "", password: "" });
+      setNewStudentData({ name: "", room: "", email: "", phone: "", department: "", password: "", year: "" });
       fetchStudents();
     } catch (err) {
       showError(err.message || "Failed to add student");
@@ -150,9 +150,9 @@ export const WardenStudents = () => {
   };
 
   const downloadTemplate = () => {
-    const headers = "Name,Email,Room,Department,Phone,Password";
-    const sample1 = "Ankit Kumar,ankit@example.com,A-101,Computer Science,9876543210,password123";
-    const sample2 = "Kunal Raj,kunal@example.com,B-205,ECE,9123456789,password123";
+    const headers = "Name,Email,Room,Department,Phone,Year,Password";
+    const sample1 = "Ankit Kumar,ankit@example.com,A-101,Computer Science,9876543210,1st Year,password123";
+    const sample2 = "Kunal Raj,kunal@example.com,B-205,ECE,9123456789,2nd Year,password123";
     const csvContent = `${headers}\n${sample1}\n${sample2}`;
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -392,9 +392,23 @@ export const WardenStudents = () => {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                    {student.year || "N/A"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Phone className="w-4 h-4 text-slate-400" />
                   <span className="truncate">{student.phone}</span>
                 </div>
+              </div>
+
+              {/* Monthly Leaves Count */}
+              <div className="flex items-center justify-between text-xs text-slate-500 mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  Leaves (30 days)
+                </span>
+                <span className="font-semibold text-slate-700">{student.monthlyLeaves || 0} times</span>
               </div>
 
               {/* Attendance Bar */}
@@ -495,6 +509,7 @@ export const WardenStudents = () => {
                 { icon: MapPin, label: "Room", value: studentDetails.student.room },
                 { icon: Building, label: "Department", value: studentDetails.student.department },
                 { icon: Phone, label: "Parent Phone", value: studentDetails.student.parentPhone },
+                { icon: Shield, label: "Year", value: studentDetails.student.year || 'N/A' },
                 { icon: Calendar, label: "Joined", value: formatDate(studentDetails.student.createdAt) }
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -527,11 +542,12 @@ export const WardenStudents = () => {
             {/* Overview Tab */}
             {detailTab === "overview" && (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: "Attendance", value: `${studentDetails.attendance.rate}%`, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
                     { label: "Present Days", value: studentDetails.attendance.presentDays, icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-                    { label: "Absent Days", value: studentDetails.attendance.absentDays, icon: UserX, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" }
+                    { label: "Absent Days", value: studentDetails.attendance.absentDays, icon: UserX, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
+                    { label: "Leaves (Month)", value: `${studentDetails.student.monthlyLeaves || 0} times`, icon: Calendar, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" }
                   ].map((s, i) => (
                     <div key={i} className={`text-center p-4 ${s.bg} rounded-xl border ${s.border}`}>
                       <s.icon className={`w-5 h-5 ${s.color} mx-auto mb-1.5`} />
@@ -696,6 +712,21 @@ export const WardenStudents = () => {
               placeholder="e.g. Computer Science"
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Academic Year *</label>
+            <select
+              value={newStudentData.year}
+              onChange={(e) => setNewStudentData({ ...newStudentData, year: e.target.value })}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+              required
+            >
+              <option value="">Select Year</option>
+              <option value="1st Year">1st Year</option>
+              <option value="2nd Year">2nd Year</option>
+              <option value="3rd Year">3rd Year</option>
+              <option value="4th Year">4th Year</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>

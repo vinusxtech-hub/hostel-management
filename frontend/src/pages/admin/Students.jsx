@@ -17,7 +17,7 @@ export const AdminStudents = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [newStudentData, setNewStudentData] = useState({ name: "", room: "", email: "", hostelSection: "", building: "" });
+  const [newStudentData, setNewStudentData] = useState({ name: "", room: "", email: "", hostelSection: "", building: "", year: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { success, error } = useToast();
 
@@ -54,7 +54,7 @@ export const AdminStudents = () => {
     const building = newStudentData.building;
     const allowedForSection = section === 'boys' ? ['A','B'] : section === 'girls' ? ['C'] : ['A','B','C'];
 
-    if (!newStudentData.name || !newStudentData.room || !newStudentData.email || !newStudentData.hostelSection || !newStudentData.building) {
+    if (!newStudentData.name || !newStudentData.room || !newStudentData.email || !newStudentData.hostelSection || !newStudentData.building || !newStudentData.year) {
       error("Please fill all fields");
       return;
     }
@@ -67,7 +67,7 @@ export const AdminStudents = () => {
       await api.admin.addStudent(newStudentData);
       success("Student added successfully");
       setShowModal(false);
-      setNewStudentData({ name: "", room: "", email: "", hostelSection: "", building: "" });
+      setNewStudentData({ name: "", room: "", email: "", hostelSection: "", building: "", year: "" });
       fetchStudents();
     } catch (err) {
       error("Failed to add student");
@@ -179,9 +179,9 @@ export const AdminStudents = () => {
 
   const downloadTemplate = () => {
     // Create a sample CSV template for download
-    const headers = "Name,Email,HostelSection,Building,Room,Department,Phone,Password";
-    const sample1 = "Anshu,anshu@example.com,boys,A,A-101,Computer Science,9876543210,password123";
-    const sample2 = "Jane Smith,jane@example.com,girls,C,C-205,AIDS,9123456789,password123";
+    const headers = "Name,Email,HostelSection,Building,Room,Department,Phone,Year,Password";
+    const sample1 = "Anshu,anshu@example.com,boys,A,A-101,Computer Science,9876543210,1st Year,password123";
+    const sample2 = "Jane Smith,jane@example.com,girls,C,C-205,AIDS,9123456789,2nd Year,password123";
     const csvContent = `${headers}\n${sample1}\n${sample2}`;
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -271,6 +271,8 @@ export const AdminStudents = () => {
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Section</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Building</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Room</th>
+                  <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Year</th>
+                  <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Leaves (Month)</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Attendance</th>
                   <th className="text-left py-4 px-4 text-sm font-semibold text-slate-600">Actions</th>
                 </tr>
@@ -278,7 +280,7 @@ export const AdminStudents = () => {
               <tbody>
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-8 text-slate-600">
+                    <td colSpan="8" className="text-center py-8 text-slate-600">
                       No students found
                     </td>
                   </tr>
@@ -293,6 +295,8 @@ export const AdminStudents = () => {
                         </span>
                       </td>
                       <td className="py-4 px-4 text-slate-600">{student.room}</td>
+                      <td className="py-4 px-4 text-slate-600">{student.year || "N/A"}</td>
+                      <td className="py-4 px-4 text-slate-600 font-semibold">{student.monthlyLeaves || 0} times</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-20 bg-slate-200 rounded-full h-2">
@@ -373,6 +377,21 @@ export const AdminStudents = () => {
               onChange={(e) => setNewStudentData({...newStudentData, room: e.target.value})}
               placeholder="e.g. A-101"
             />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Academic Year *</label>
+              <select
+                value={newStudentData.year}
+                onChange={(e) => setNewStudentData({ ...newStudentData, year: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 bg-white text-sm"
+                required
+              >
+                <option value="">Select Year</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            </div>
             <div className="flex gap-3 pt-4">
               <Button type="submit" disabled={isSubmitting} className="flex-1">
                 {isSubmitting ? 'Adding...' : 'Add Student'}
@@ -608,6 +627,7 @@ export const AdminStudents = () => {
                   { icon: MapPin, label: "Room", value: studentDetails.student.room },
                   { icon: Building, label: "Department", value: studentDetails.student.department },
                   { icon: Phone, label: "Parent Phone", value: studentDetails.student.parentPhone },
+                  { icon: Shield, label: "Year", value: studentDetails.student.year || 'N/A' },
                   { icon: Calendar, label: "Joined", value: formatDate(studentDetails.student.createdAt) }
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -640,11 +660,12 @@ export const AdminStudents = () => {
               {/* Overview Tab */}
               {detailTab === "overview" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
                       { label: "Attendance", value: `${studentDetails.attendance.rate}%`, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
                       { label: "Present Days", value: studentDetails.attendance.presentDays, icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-                      { label: "Absent Days", value: studentDetails.attendance.absentDays, icon: UserX, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" }
+                      { label: "Absent Days", value: studentDetails.attendance.absentDays, icon: UserX, color: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
+                      { label: "Leaves (Month)", value: `${studentDetails.student.monthlyLeaves || 0} times`, icon: Calendar, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" }
                     ].map((s, i) => (
                       <div key={i} className={`text-center p-4 ${s.bg} rounded-xl border ${s.border}`}>
                         <s.icon className={`w-5 h-5 ${s.color} mx-auto mb-1.5`} />

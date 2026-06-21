@@ -391,6 +391,12 @@ export const api = {
         body: formData,
       });
       return handleResponse(response);
+    },
+    getScanHistory: async () => {
+      const response = await fetch(`${BASE_URL}/admin/scan-history`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
     }
   },
 
@@ -522,6 +528,12 @@ export const api = {
         body: formData,
       });
       return handleResponse(response);
+    },
+    getScanHistory: async () => {
+      const response = await fetch(`${BASE_URL}/warden/scan-history`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
     }
   },
 
@@ -556,6 +568,12 @@ export const api = {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ token }),
+      });
+      return handleResponse(response);
+    },
+    getHistory: async () => {
+      const response = await fetch(`${BASE_URL}/guard/history`, {
+        headers: authHeaders(),
       });
       return handleResponse(response);
     }

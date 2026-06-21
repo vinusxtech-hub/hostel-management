@@ -30,6 +30,7 @@ const formatCountdown = (totalSeconds) => {
 
 export const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [monthlyLeavesCount, setMonthlyLeavesCount] = useState(0);
   const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [isMarkingAttendance, setIsMarkingAttendance] = useState(false);
   const [settings, setSettings] = useState(null);
@@ -131,6 +132,13 @@ export const Dashboard = () => {
           (l) => l.status === 'Approved' && l.approvedAt && (now - new Date(l.approvedAt).getTime()) <= THREE_HOURS
         );
         setActiveLeavePass(activPass || null);
+
+        // Count approved leaves in the last 30 days
+        const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+        const count = leaves?.filter(
+          (l) => l.status === 'Approved' && new Date(l.startDate).getTime() >= thirtyDaysAgo
+        ).length || 0;
+        setMonthlyLeavesCount(count);
       } catch (err) {
         console.error('Failed to load leaves:', err);
       }
@@ -289,8 +297,8 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Status Row — compact 2-col */}
-      <div className="grid grid-cols-2 gap-4 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
+      {/* Status Row — compact 3-col */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
         {/* Geolocation pill */}
         <Card>
           <div className="flex items-center justify-between">
@@ -342,6 +350,22 @@ export const Dashboard = () => {
             ) : (
               <div className="p-2.5 bg-slate-100/50 rounded-xl flex-shrink-0"><AlertCircle className="w-6 h-6 text-slate-400" /></div>
             )}
+          </div>
+        </Card>
+
+        {/* Leaves pill */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Leaves (Last 30 Days)</p>
+              <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                {monthlyLeavesCount} {monthlyLeavesCount === 1 ? 'time' : 'times'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5">Approved leave requests</p>
+            </div>
+            <div className="p-2.5 bg-indigo-100/50 rounded-xl flex-shrink-0">
+              <Calendar className="w-6 h-6 text-indigo-600" />
+            </div>
           </div>
         </Card>
       </div>

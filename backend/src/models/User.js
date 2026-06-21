@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema({
     enum: ['boys', 'girls', ''],
     default: ''
   },
+  year: {
+    type: String,
+    enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', ''],
+    default: ''
+  },
   building: {
     type: String,
     enum: ['A', 'B', 'C', ''],
@@ -76,6 +81,11 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: {
     type: Date,
     select: false
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true

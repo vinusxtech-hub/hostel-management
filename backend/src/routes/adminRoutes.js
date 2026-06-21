@@ -37,6 +37,7 @@ router.put('/settings', adminController.updateSettings);
 // Leave management routes
 router.get('/leaves', leaveController.getPendingLeaves);
 router.get('/leaves/all', leaveController.getAllLeaves);
+router.get('/scan-history', leaveController.getAdminScanHistory);
 router.put('/leaves/:id/approve', leaveController.approveLeave);
 router.put('/leaves/:id/reject', leaveController.rejectLeave);
 

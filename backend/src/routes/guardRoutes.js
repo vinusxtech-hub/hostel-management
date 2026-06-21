@@ -17,5 +17,6 @@ router.use(protect);
 router.use(guardOnly);
 
 router.post('/verify-qr', leaveController.verifyQrCode);
+router.get('/history', leaveController.getGuardHistory);
 
 module.exports = router;
