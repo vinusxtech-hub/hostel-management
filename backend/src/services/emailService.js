@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 
 // Helper to create and return SMTP transporter
 const getTransporter = () => {
@@ -46,8 +48,31 @@ const sendBrevoEmail = (payload) => {
       console.log(`[EmailService] Email sent successfully to ${recipientEmail} (Msg ID: ${info.messageId})`);
       return info;
     })
-    .catch((err) => {
+    .catch(async (err) => {
       console.error(`[EmailService] Failed to send email to ${recipientEmail} via SMTP: ${err.message}`);
+      
+      // Fallback: save email as local HTML file for developer review
+      try {
+        const tempDir = path.resolve(__dirname, '../../temp/emails');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const fileName = `${Date.now()}_${recipientEmail.replace(/[^a-zA-Z0-9]/g, '_')}.html`;
+        const filePath = path.join(tempDir, fileName);
+        
+        fs.writeFileSync(filePath, payload.htmlContent, 'utf8');
+        
+        console.warn('\n========================================================================');
+        console.warn('📬  LOCAL EMAIL FALLBACK GENERATED:');
+        console.warn(`An email to ${recipientEmail} could not be sent via SMTP.`);
+        console.warn(`The HTML email content has been saved locally for preview:`);
+        console.warn(`file:///${filePath.replace(/\\/g, '/')}`);
+        console.warn('========================================================================\n');
+      } catch (fsErr) {
+        console.error('[EmailService] Failed to write local preview HTML file:', fsErr.message);
+      }
+      
       throw err;
     });
 };
@@ -55,7 +80,7 @@ const sendBrevoEmail = (payload) => {
 /**
  * Build the HTML for a credentials email.
  */
-const buildCredentialsHtml = ({ name, email, password, role, portalUrl }) => {
+const buildCredentialsHtml = ({ name, loginUsername, password, role, portalUrl }) => {
   const roleLabel = role === 'warden' ? 'Warden' : 'Student';
   const roleColor = role === 'warden' ? '#7c3aed' : '#4f46e5';
   const roleDesc = role === 'warden'
@@ -107,7 +132,7 @@ const buildCredentialsHtml = ({ name, email, password, role, portalUrl }) => {
           </div>
           <div class="cred-row">
             <span class="cred-label">Username</span>
-            <span class="cred-value">${email}</span>
+            <span class="cred-value">${loginUsername}</span>
           </div>
           <div class="cred-row">
             <span class="cred-label">Password</span>
@@ -132,12 +157,13 @@ const buildCredentialsHtml = ({ name, email, password, role, portalUrl }) => {
 
 /**
  * Send a welcome email with credentials to a student or warden.
- * @param {string} email - Recipient email
+ * @param {string} recipientEmail - Recipient email
  * @param {string} name  - Recipient name
+ * @param {string} loginUsername - Generated login username
  * @param {string} password - Plaintext password (before hashing)
  * @param {string} role  - 'student' | 'warden' | 'guard'
  */
-exports.sendWelcomeEmail = async (email, name, password, role = 'student') => {
+exports.sendWelcomeEmail = async (recipientEmail, name, loginUsername, password, role = 'student') => {
   const portalUrl = process.env.PORTAL_URL || 'http://localhost:5173';
   const roleLabel = role === 'warden' ? 'Warden' : role === 'guard' ? 'Guard' : 'Student';
   const subject = `Welcome to SISTec Hostel Portal — Your ${roleLabel} Account Credentials`;
@@ -150,16 +176,16 @@ exports.sendWelcomeEmail = async (email, name, password, role = 'student') => {
       name: senderName,
       email: senderEmail
     },
-    to: [{ email, name }],
+    to: [{ email: recipientEmail, name }],
     subject,
-    htmlContent: buildCredentialsHtml({ name, email, password, role, portalUrl })
+    htmlContent: buildCredentialsHtml({ name, loginUsername, password, role, portalUrl })
   };
 
   // Always log credentials in case email fails
-  console.log(`[EmailService] New ${roleLabel} account → email: ${email} | password: ${password}`);
+  console.log(`[EmailService] New ${roleLabel} account → recipient: ${recipientEmail} | username: ${loginUsername} | password: ${password}`);
 
   return sendBrevoEmail(payload).catch(err => {
-    console.error(`[EmailService] Failed to send to ${email}: ${err.message}`);
+    console.error(`[EmailService] Failed to send to ${recipientEmail}: ${err.message}`);
   });
 };
 

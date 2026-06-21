@@ -76,6 +76,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log(`[AuthLogin] Login attempt for email: "${email}"`);
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
     if (!normalizedEmail || !password) {
@@ -229,17 +230,20 @@ exports.updateProfile = async (req, res) => {
     }
 
     // --- Handle email change ---
-    if (email && email.toLowerCase().trim() !== user.email) {
+    const currentPersonalEmail = user.personalEmail || user.email;
+    if (email && email.toLowerCase().trim() !== currentPersonalEmail) {
       const normalizedNewEmail = email.toLowerCase().trim();
       const emailRegex = /^\S+@\S+\.\S+$/;
       if (!emailRegex.test(normalizedNewEmail)) {
         return res.status(400).json({ error: 'Invalid email address' });
       }
-      const existing = await User.findOne({ email: normalizedNewEmail });
+      const existing = await User.findOne({
+        $or: [{ email: normalizedNewEmail }, { personalEmail: normalizedNewEmail }]
+      });
       if (existing && String(existing._id) !== String(user._id)) {
         return res.status(400).json({ error: 'This email is already in use by another account' });
       }
-      user.email = normalizedNewEmail;
+      user.personalEmail = normalizedNewEmail;
     }
 
     // --- Handle allowed profile fields ---

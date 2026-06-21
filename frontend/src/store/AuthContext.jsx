@@ -57,6 +57,22 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
+  // Cross-tab session sync: if another tab logs out, update this tab too
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "hostel_token" && !e.newValue) {
+        // Token was removed in another tab → log out here too
+        setUser(null);
+      }
+      if (e.key === "hostel_token" && e.newValue && !user) {
+        // Another tab logged in → reload to pick up the session
+        window.location.reload();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [user]);
+
   const login = async (email, password) => {
     const data = await api.auth.login(email, password);
     localStorage.setItem("hostel_token", data.token);

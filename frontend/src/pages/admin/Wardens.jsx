@@ -649,7 +649,7 @@ export const AdminWardens = () => {
         </form>
       </Modal>
 
-      {/* Success Modal showing warden credentials */}
+      {/* Success Modal showing warden creation status */}
       <Modal 
         isOpen={!!addedWarden} 
         onClose={() => setAddedWarden(null)} 
@@ -657,24 +657,21 @@ export const AdminWardens = () => {
         className="max-w-md"
       >
         <div className="space-y-4">
-          <div className="flex flex-col items-center justify-center p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
+          <div className="flex flex-col items-center justify-center p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
             <CheckCircle className="w-12 h-12 text-emerald-500 mb-2" />
             <h3 className="text-base font-bold text-slate-800">Warden Added</h3>
-            <p className="text-xs text-slate-500 mt-1">Credentials have been automatically sent to the warden's email.</p>
+            <p className="text-xs text-slate-500 mt-1">Account created successfully.</p>
+            <p className="text-xs text-slate-600 font-semibold mt-2 px-2">
+              Login credentials (username and password) have been sent directly to their registered email:
+              <br/>
+              <strong className="text-emerald-700 break-all">{addedWarden?.email}</strong>
+            </p>
           </div>
 
           <div className="space-y-3">
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Full Name</p>
               <p className="text-sm font-bold text-slate-800 mt-0.5">{addedWarden?.name}</p>
-            </div>
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Username (Email)</p>
-              <p className="text-sm font-bold text-slate-800 mt-0.5 break-all">{addedWarden?.email}</p>
-            </div>
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Generated Password</p>
-              <p className="text-sm font-mono font-extrabold text-indigo-700 mt-0.5">{addedWarden?.password}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -689,16 +686,7 @@ export const AdminWardens = () => {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button 
-              className="flex-1"
-              onClick={() => {
-                navigator.clipboard.writeText(`Username: ${addedWarden?.email}\nPassword: ${addedWarden?.password}`);
-                success("Credentials copied to clipboard!");
-              }}
-            >
-              Copy Credentials
-            </Button>
-            <Button variant="secondary" onClick={() => setAddedWarden(null)}>
+            <Button className="flex-1" onClick={() => setAddedWarden(null)}>
               Close
             </Button>
           </div>

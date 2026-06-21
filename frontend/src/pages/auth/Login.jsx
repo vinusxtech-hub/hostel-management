@@ -4,11 +4,11 @@ import { useAuth } from "../../store/AuthContext";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { useToast } from "../../hooks/useToast";
-import { LogIn, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff, ArrowRightLeft } from "lucide-react";
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, logout, user } = useAuth();
   const { error: showError, success: showSuccess } = useToast();
   
   const [email, setEmail] = useState("");
@@ -25,15 +25,16 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      const user = await login(email, password);
-      showSuccess(`Welcome back, ${user.name}!`);
+      console.log("Submitting login with state values:", { email, passwordLength: password.length });
+      const newUser = await login(email, password);
+      showSuccess(`Welcome back, ${newUser.name}!`);
       setTimeout(() => {
         navigate(
-          user.role === "admin"
+          newUser.role === "admin"
             ? "/admin/dashboard"
-            : user.role === "warden"
+            : newUser.role === "warden"
             ? "/warden/dashboard"
-            : user.role === "guard"
+            : newUser.role === "guard"
             ? "/guard/dashboard"
             : "/dashboard"
         );
@@ -47,6 +48,14 @@ export const Login = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Account switch banner */}
+      {user && (
+        <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          <ArrowRightLeft className="w-4 h-4 flex-shrink-0" />
+          <span>Logged in as <strong>{user.name}</strong> ({user.role}). Enter new credentials to switch account.</span>
+        </div>
+      )}
+
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
           Email Address
@@ -57,6 +66,7 @@ export const Login = () => {
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
           required
         />
       </div>
@@ -72,6 +82,7 @@ export const Login = () => {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
           />
           <button
@@ -90,7 +101,7 @@ export const Login = () => {
         className="w-full"
         size="lg"
       >
-        {isLoading ? "Signing in..." : "Sign In"}
+        {isLoading ? "Signing in..." : user ? "Switch Account" : "Sign In"}
       </Button>
 
       <p className="text-center text-sm text-slate-600">

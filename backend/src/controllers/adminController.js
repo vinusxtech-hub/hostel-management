@@ -4,6 +4,17 @@ const Resolution = require('../models/Resolution');
 const Notice = require('../models/Notice');
 const Settings = require('../models/Settings');
 
+const generateRandomPassword = (role) => {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let password = '';
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const suffix = role === 'warden' ? 'W!' : 'S!';
+  return password + suffix;
+};
+
+
 const normalizeHostelSection = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
   if (['boys', 'boy', 'male', 'm'].includes(normalized)) return 'boys';
@@ -218,13 +229,15 @@ exports.getStudentDetails = async (req, res) => {
 // @route   POST /api/admin/students
 exports.addStudent = async (req, res) => {
   try {
-    const { name, email, room, department, phone, password, hostelSection, building } = req.body;
+    const { name, email, room, department, phone, hostelSection, building } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!name || !email) {
+    if (!name || !normalizedEmail) {
       return res.status(400).json({ error: 'Name and email are required' });
     }
 
-    const existing = await User.findOne({ email });
+    // Check if user already exists
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(400).json({ error: 'Email already in use' });
     }
@@ -251,11 +264,13 @@ exports.addStudent = async (req, res) => {
       req.body.building = pick;
     }
 
-    const welcomePassword = password || 'password123';
+    // Generate secure random password
+    const plainPassword = generateRandomPassword('student');
+
     const student = await User.create({
       name,
-      email,
-      password: welcomePassword,
+      email: normalizedEmail,
+      password: plainPassword,
       role: 'student',
       hostelSection: normalizedSection,
       building: req.body.building || '',
@@ -264,9 +279,9 @@ exports.addStudent = async (req, res) => {
       phone: phone || ''
     });
 
-    // Send welcome email using Brevo service
+    // Send welcome email with credentials to their email asynchronously
     const emailService = require('../services/emailService');
-    emailService.sendWelcomeEmail(student.email, student.name, welcomePassword).catch(err => {
+    emailService.sendWelcomeEmail(student.email, student.name, student.email, plainPassword, 'student').catch(err => {
       console.error(`Welcome email send failed for ${student.email}:`, err.message);
     });
 
@@ -372,7 +387,8 @@ exports.bulkImportStudents = async (req, res) => {
           }
         }
 
-        const importPassword = row.password || Math.random().toString(36).substring(2, 10);
+        const importPassword = generateRandomPassword('student');
+
         const student = await User.create({
           name,
           email: email.toLowerCase(),
@@ -389,7 +405,7 @@ exports.bulkImportStudents = async (req, res) => {
 
         // Trigger welcome email asynchronously
         const emailService = require('../services/emailService');
-        emailService.sendWelcomeEmail(student.email, student.name, importPassword).catch(err => {
+        emailService.sendWelcomeEmail(student.email, student.name, student.email, importPassword, 'student').catch(err => {
           console.error(`Welcome email send failed during import for ${student.email}:`, err.message);
         });
 
@@ -874,8 +890,8 @@ exports.addWarden = async (req, res) => {
       return res.status(400).json({ error: 'An account with this email already exists' });
     }
 
-    // Always auto-generate warden password dynamically
-    const plainPassword = Math.random().toString(36).substring(2, 10) + 'W!';
+    // Generate secure random password
+    const plainPassword = generateRandomPassword('warden');
 
     const warden = await User.create({
       name,
@@ -888,9 +904,9 @@ exports.addWarden = async (req, res) => {
       department: department || ''
     });
 
-    // Send welcome email with credentials asynchronously
+    // Send welcome email with credentials to their email asynchronously
     const emailService = require('../services/emailService');
-    emailService.sendWelcomeEmail(warden.email, warden.name, plainPassword, 'warden').catch(err => {
+    emailService.sendWelcomeEmail(warden.email, warden.name, warden.email, plainPassword, 'warden').catch(err => {
       console.error(`Warden welcome email failed for ${warden.email}:`, err.message);
     });
 
@@ -898,7 +914,6 @@ exports.addWarden = async (req, res) => {
       id: warden._id,
       name: warden.name,
       email: warden.email,
-      password: plainPassword,
       role: warden.role,
       hostelSection: warden.hostelSection,
       building: warden.building,

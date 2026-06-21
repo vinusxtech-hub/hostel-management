@@ -43,6 +43,7 @@ Thumbs.db
 
 *.tmp
 *.temp
+backend/temp/
 
 # coverage reports
 

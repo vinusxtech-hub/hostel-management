@@ -4,7 +4,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const getToken = () => localStorage.getItem('hostel_token');
 
 const handleResponse = async (response) => {
-  if (response.status === 401) {
+  if (response.status === 401 && !response.url.includes('/auth/login')) {
     localStorage.removeItem('hostel_token');
     localStorage.removeItem('hostel_user');
     window.location.href = '/login';

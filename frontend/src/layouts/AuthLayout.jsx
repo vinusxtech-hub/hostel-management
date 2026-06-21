@@ -5,7 +5,10 @@ export const AuthLayout = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  if (user) {
+  // If user is logged in and visits an auth page other than /login,
+  // redirect them to their dashboard. For /login, allow access so
+  // they can switch accounts (the login handler replaces the session).
+  if (user && location.pathname !== "/login") {
     if (user?.role === "admin") {
       return <Navigate to="/admin/dashboard" state={{ from: location }} replace />;
     }

@@ -28,7 +28,14 @@ app.use('/api/guard', guardRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Backend is running' });
+  const mongoose = require('mongoose');
+  res.json({ 
+    status: 'ok', 
+    message: 'Backend is running',
+    dbHost: mongoose.connection.host || 'none',
+    dbName: mongoose.connection.name || 'none',
+    dbConnected: mongoose.connection.readyState === 1
+  });
 });
 
 // Auto-seed function for empty databases (in-memory or fresh install)
