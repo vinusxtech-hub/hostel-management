@@ -10,9 +10,9 @@ const test = async () => {
     await mongoose.connect(uri);
     console.log('Connected to DB successfully!');
     
-    // Find all users who are NOT students
-    const users = await User.find({ role: { $ne: 'student' } });
-    console.log('Non-student Users in DB:');
+    // Find all users
+    const users = await User.find({});
+    console.log('All Users in DB:');
     users.forEach(u => {
       console.log(`- ID: ${u._id} | Name: ${u.name} | Email: ${u.email} | Role: ${u.role} | Section: ${u.hostelSection || 'N/A'}`);
     });

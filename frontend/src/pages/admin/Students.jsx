@@ -163,6 +163,15 @@ export const AdminStudents = () => {
     setStudentDetails(null);
   };
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Present": return "bg-green-100 text-green-700";
+      case "Late": return "bg-yellow-100 text-yellow-700";
+      case "On Leave": return "bg-blue-100 text-blue-700";
+      default: return "bg-red-100 text-red-700";
+    }
+  };
+
   const getResolutionStatusColor = (status) => {
     switch (status) {
       case "Resolved": return "bg-emerald-100 text-emerald-700";

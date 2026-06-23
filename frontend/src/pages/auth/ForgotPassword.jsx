@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, KeyRound, ArrowRight, Copy, CheckCircle2 } from "lucide-react";
+import { Mail, KeyRound } from "lucide-react";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { useToast } from "../../hooks/useToast";
@@ -10,10 +10,6 @@ export const ForgotPassword = () => {
   const { error: showError, success: showSuccess } = useToast();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewToken, setPreviewToken] = useState("");
-  const [expiresInMinutes, setExpiresInMinutes] = useState(15);
-
-  const resetLink = previewToken ? `/reset-password?token=${encodeURIComponent(previewToken)}` : "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,22 +22,11 @@ export const ForgotPassword = () => {
     setIsSubmitting(true);
     try {
       const data = await api.auth.forgotPassword(email.trim());
-      setPreviewToken(data.previewToken || "");
-      setExpiresInMinutes(data.expiresInMinutes || 15);
       showSuccess(data.message);
     } catch (err) {
       showError(err.message);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const copyResetLink = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}${resetLink}`);
-      showSuccess("Reset link copied");
-    } catch {
-      showError("Unable to copy the reset link");
     }
   };
 
@@ -80,36 +65,6 @@ export const ForgotPassword = () => {
           {isSubmitting ? "Preparing reset link..." : "Send Reset Link"}
         </Button>
       </form>
-
-      {previewToken && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 space-y-3">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-900">Reset link ready</p>
-              <p className="text-sm text-emerald-800">
-                This demo environment shows the reset link directly. It expires in {expiresInMinutes} minutes.
-              </p>
-            </div>
-          </div>
-          <div className="rounded-xl bg-white/80 border border-emerald-100 px-3 py-2 text-sm text-slate-700 break-all">
-            {window.location.origin}
-            {resetLink}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link to={resetLink} className="flex-1">
-              <Button className="w-full gap-2">
-                Open Reset Form
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Button type="button" variant="secondary" onClick={copyResetLink} className="gap-2">
-              <Copy className="w-4 h-4" />
-              Copy Link
-            </Button>
-          </div>
-        </div>
-      )}
 
       <p className="text-center text-sm text-slate-600">
         Remembered it?{" "}

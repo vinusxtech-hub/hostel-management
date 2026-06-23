@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from "./store/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Loader } from "./components/Loader";
 import { ToastContainer } from "./components/Toast";
-import { useToast } from "./hooks/useToast";
+import { useToast, ToastProvider } from "./hooks/useToast";
 
 // Layouts
 import { AuthLayout } from "./layouts/AuthLayout";
@@ -91,6 +91,7 @@ function AppContent() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="students" element={<AdminStudents />} />
           <Route path="attendance" element={<AdminAttendance />} />
+          <Route path="leaves" element={<WardenLeaves />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="notices" element={<AdminNotices />} />
           <Route path="wardens" element={<AdminWardens />} />
@@ -126,11 +127,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 

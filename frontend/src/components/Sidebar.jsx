@@ -31,6 +31,7 @@ const adminLinks = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
   { icon: Users, label: "Students", path: "/admin/students" },
   { icon: CheckSquare, label: "Attendance", path: "/admin/attendance" },
+  { icon: CalendarOff, label: "Leaves", path: "/admin/leaves" },
   { icon: BarChart3, label: "Reports", path: "/admin/reports" },
   { icon: Megaphone, label: "Notices", path: "/admin/notices" },
   { icon: Shield, label: "Wardens", path: "/admin/wardens" },

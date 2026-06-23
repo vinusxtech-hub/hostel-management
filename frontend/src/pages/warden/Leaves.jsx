@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../store/AuthContext";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
@@ -34,6 +35,9 @@ import {
 // ============================================================
 
 export const WardenLeaves = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
   const [isLoading, setIsLoading] = useState(true);
   const [leaves, setLeaves] = useState([]);
   const [filter, setFilter] = useState("All");
@@ -59,7 +63,7 @@ export const WardenLeaves = () => {
 
   const fetchLeaves = async () => {
     try {
-      const data = await api.warden.getAllLeaves();
+      const data = isAdmin ? await api.admin.getLeaves() : await api.warden.getAllLeaves();
       setLeaves(normalizeLeaves(data));
     } catch (err) {
       error("Failed to load leave requests");
@@ -81,10 +85,18 @@ export const WardenLeaves = () => {
     setIsProcessing(true);
     try {
       if (actionType === "approve") {
-        await api.warden.approveLeave(selectedLeave.id, { remarks });
+        if (isAdmin) {
+          await api.admin.approveLeave(selectedLeave.id, { remarks });
+        } else {
+          await api.warden.approveLeave(selectedLeave.id, { remarks });
+        }
         success("Leave request approved successfully!");
       } else {
-        await api.warden.rejectLeave(selectedLeave.id, { remarks });
+        if (isAdmin) {
+          await api.admin.rejectLeave(selectedLeave.id, { remarks });
+        } else {
+          await api.warden.rejectLeave(selectedLeave.id, { remarks });
+        }
         success("Leave request rejected");
       }
       setShowActionModal(false);
@@ -254,7 +266,7 @@ export const WardenLeaves = () => {
               <CalendarOff className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 text-lg font-medium">No leave requests found</p>
               <p className="text-slate-400 text-sm mt-1">
-                {filter !== "All" ? `No ${filter.toLowerCase()} requests` : "No requests from your hostel section"}
+                {filter !== "All" ? `No ${filter.toLowerCase()} requests` : (isAdmin ? "No leave requests found" : "No requests from your hostel section")}
               </p>
             </div>
           </Card>

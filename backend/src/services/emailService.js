@@ -210,6 +210,75 @@ exports.sendWelcomeEmail = async (recipientEmail, name, loginUsername, password,
 };
 
 /**
+ * Send a password reset email.
+ */
+exports.sendPasswordResetEmail = async (recipientEmail, name, resetLink) => {
+  const senderName = process.env.SENDER_NAME || 'SISTec Hostel Management';
+  const senderEmail = process.env.SENDER_EMAIL || 'no-reply@sistechostel.in';
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: recipientEmail, name }],
+    subject: 'SISTec Hostel — Reset Your Password',
+    htmlContent: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SISTec Hostel — Reset Your Password</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .header { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); padding: 36px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+    .header p { margin: 6px 0 0; color: rgba(255,255,255,0.8); font-size: 13px; }
+    .content { padding: 32px; }
+    .greeting { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+    .btn { display: inline-block; background: #4f46e5; color: #fff !important; font-weight: 700; font-size: 14px; padding: 13px 28px; border-radius: 10px; text-decoration: none; margin-top: 20px; }
+    .warning { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; margin-top: 16px; font-size: 13px; color: #92400e; }
+    .footer { background: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>🏛️ SISTEC HOSTEL PORTAL</h1>
+        <p>Password Reset Request</p>
+      </div>
+      <div class="content">
+        <p class="greeting">Hello ${name},</p>
+        <p>We received a request to reset the password for your SISTec Hostel Portal account. Click the button below to choose a new password. This link is valid for 15 minutes.</p>
+        <div style="text-align: center;">
+          <a href="${resetLink}" class="btn">Reset Password →</a>
+        </div>
+        <p style="font-size: 13px; margin-top: 24px; color: #64748b; word-break: break-all;">
+          If the button doesn't work, copy and paste this link into your browser: <br/>
+          <a href="${resetLink}" style="color: #4f46e5;">${resetLink}</a>
+        </p>
+        <div class="warning">
+          ⚠️ <strong>Security Notice:</strong> If you did not request a password reset, please ignore this email or contact the admin.
+        </div>
+      </div>
+      <div class="footer">
+        <p>This is an automated email. Do not reply to this message.</p>
+        <p>© 2026 SISTec Hostel Administration. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `
+  };
+
+  console.log(`[EmailService] Sending password reset email to ${recipientEmail}...`);
+  return sendBrevoEmail(payload).catch(err => {
+    console.error(`[EmailService] Failed to send password reset email to ${recipientEmail}: ${err.message}`);
+  });
+};
+
+/**
  * Send a password-changed notification email.
  */
 exports.sendPasswordChangedEmail = async (email, name) => {

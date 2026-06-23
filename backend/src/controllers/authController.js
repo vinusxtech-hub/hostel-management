@@ -86,13 +86,13 @@ exports.login = async (req, res) => {
     // Find user and include password for comparison
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Wrong credentials' });
     }
 
     // Compare passwords
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Wrong credentials' });
     }
 
     const token = generateToken(user._id);
@@ -135,20 +135,25 @@ exports.forgotPassword = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+resetPasswordToken +resetPasswordExpires');
 
     if (!user) {
-      return res.json({
-        message: 'If an account exists for this email, a password reset link has been prepared.'
-      });
+      return res.status(404).json({ error: 'This email does not exist' });
     }
 
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
+    // Send email with reset link
+    const portalUrl = process.env.PORTAL_URL || 'http://localhost:5173';
+    const resetLink = `${portalUrl}/reset-password?token=${resetToken}`;
+    
+    const emailService = require('../services/emailService');
+    await emailService.sendPasswordResetEmail(user.email, user.name, resetLink);
+
     res.json({
-      message: 'If an account exists for this email, a password reset link has been prepared.',
-      previewToken: resetToken,
+      message: 'A password reset link has been sent to your email.',
       expiresInMinutes: 15
     });
   } catch (error) {
+    console.error('Forgot password error:', error);
     res.status(500).json({ error: 'Server error while requesting password reset' });
   }
 };
@@ -169,10 +174,28 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
+    console.log(`[ResetPassword] Received raw token from URL parameter: "${token}"`);
     const hashedToken = crypto
       .createHash('sha256')
       .update(token)
       .digest('hex');
+    console.log(`[ResetPassword] Computed hash for query: "${hashedToken}"`);
+
+    // Trace: Check if user exists by token alone first
+    const userByToken = await User.findOne({ resetPasswordToken: hashedToken }).select('+resetPasswordToken +resetPasswordExpires');
+    if (!userByToken) {
+      console.log(`[ResetPassword] No user found matching resetPasswordToken: "${hashedToken}"`);
+    } else {
+      const now = new Date();
+      console.log(`[ResetPassword] Matching user found: "${userByToken.name}"`);
+      console.log(`[ResetPassword] Token Expires At: ${userByToken.resetPasswordExpires}`);
+      console.log(`[ResetPassword] Current Server Time: ${now}`);
+      if (userByToken.resetPasswordExpires <= now) {
+        console.log(`[ResetPassword] Verification failed: Token has expired.`);
+      } else {
+        console.log(`[ResetPassword] Verification success: Token is valid.`);
+      }
+    }
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
