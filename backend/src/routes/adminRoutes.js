@@ -17,6 +17,7 @@ router.get('/students/:id', adminController.getStudentDetails);
 router.post('/students', adminController.addStudent);
 router.post('/students/bulk-import', upload.single('file'), adminController.bulkImportStudents);
 router.get('/attendance', adminController.getAttendance);
+router.post('/attendance/remind', adminController.sendAttendanceReminders);
 router.get('/reports', adminController.getReports);
 router.get('/resolutions', adminController.getResolutions);
 router.put('/resolutions/:id', adminController.updateResolution);

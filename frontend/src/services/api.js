@@ -195,6 +195,13 @@ export const api = {
       });
       return handleResponse(response);
     },
+    sendAttendanceReminders: async (role = 'admin') => {
+      const response = await fetch(`${BASE_URL}/${role}/attendance/remind`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
     getDashboardStats: async () => {
       const response = await fetch(`${BASE_URL}/admin/stats`, {
         headers: authHeaders(),
@@ -573,6 +580,30 @@ export const api = {
     },
     getHistory: async () => {
       const response = await fetch(`${BASE_URL}/guard/history`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    }
+  },
+
+  // Notifications APIs
+  notifications: {
+    get: async () => {
+      const response = await fetch(`${BASE_URL}/notifications`, {
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    markRead: async (id) => {
+      const response = await fetch(`${BASE_URL}/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: authHeaders(),
+      });
+      return handleResponse(response);
+    },
+    markAllRead: async () => {
+      const response = await fetch(`${BASE_URL}/notifications/read-all`, {
+        method: 'PUT',
         headers: authHeaders(),
       });
       return handleResponse(response);

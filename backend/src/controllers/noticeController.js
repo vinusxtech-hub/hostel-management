@@ -52,6 +52,39 @@ exports.createNotice = async (req, res) => {
       createdBy: req.user._id
     });
 
+    // Create notifications and send emails to all students in the background
+    try {
+      const User = require('../models/User');
+      const Notification = require('../models/Notification');
+      const emailService = require('../services/emailService');
+
+      const students = await User.find({ role: 'student' });
+      
+      // Send notices asynchronously
+      (async () => {
+        for (const student of students) {
+          try {
+            await Notification.create({
+              recipient: student._id,
+              sender: req.user._id,
+              title: `New Notice: ${notice.title}`,
+              message: `A new announcement has been posted under category "${notice.category}".`,
+              type: 'notice',
+              relatedId: notice._id
+            });
+
+            if (student.email) {
+              await emailService.sendNoticeEmail(student.email, student.name, notice.title, notice.content);
+            }
+          } catch (err) {
+            console.error(`Failed to distribute notice notification to student:`, err);
+          }
+        }
+      })();
+    } catch (notifErr) {
+      console.error('Failed to trigger notice notifications:', notifErr);
+    }
+
     res.status(201).json({
       id: notice._id,
       title: notice.title,

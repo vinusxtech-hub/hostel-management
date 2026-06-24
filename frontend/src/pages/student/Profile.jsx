@@ -271,12 +271,6 @@ export const Profile = () => {
             <Edit3 className="w-4 h-4" /> Edit Profile
           </button>
           <button
-            onClick={() => setShowPasswordModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 border border-white/25 text-white rounded-xl text-sm font-semibold transition-all"
-          >
-            <Key className="w-4 h-4" /> Change Password
-          </button>
-          <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-5 py-2.5 bg-red-500/80 hover:bg-red-500 border border-red-400/40 text-white rounded-xl text-sm font-semibold transition-all ml-auto"
           >

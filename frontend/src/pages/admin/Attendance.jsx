@@ -4,6 +4,8 @@ import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { CardSkeleton } from "../../components/Skeleton";
 import { api } from "../../services/api";
+import { useToast } from "../../hooks/useToast";
+import { useAuth } from "../../store/AuthContext";
 import {
   AlertCircle,
   CalendarDays,
@@ -14,9 +16,13 @@ import {
   TrendingUp,
   UserCheck,
   UserX,
+  Bell,
 } from "lucide-react";
 
 export const Attendance = () => {
+  const { user } = useAuth();
+  const { success, error: showToastError } = useToast();
+  const [isReminding, setIsReminding] = useState(false);
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split("T")[0]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,6 +98,20 @@ export const Attendance = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleSendReminders = async () => {
+    setIsReminding(true);
+    try {
+      const role = user?.role === 'warden' ? 'warden' : 'admin';
+      const result = await api.admin.sendAttendanceReminders(role);
+      success(result.message || "Attendance reminders sent successfully.");
+    } catch (err) {
+      console.error("Failed to send reminders:", err);
+      showToastError(err.message || "Failed to send attendance reminders.");
+    } finally {
+      setIsReminding(false);
+    }
   };
 
   if (isLoading) {
@@ -183,6 +203,15 @@ export const Attendance = () => {
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh Data
+            </Button>
+            <Button
+              size="lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md"
+              onClick={handleSendReminders}
+              disabled={isReminding}
+            >
+              <Bell className={`mr-2 h-4 w-4 ${isReminding ? 'animate-bounce' : ''}`} />
+              {isReminding ? "Sending..." : "Send Reminders"}
             </Button>
             <Button size="lg" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />

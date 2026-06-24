@@ -459,10 +459,12 @@ export const LeaveRequest = () => {
         className="max-w-md"
       >
         {selectedLeaveForQR && (() => {
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedLeaveForQR.id)}`;
           const days = getDayCount(selectedLeaveForQR.startDate, selectedLeaveForQR.endDate);
           const approvalTime = selectedLeaveForQR.approvedAt ? new Date(selectedLeaveForQR.approvedAt) : null;
           const expiryTime = approvalTime ? new Date(approvalTime.getTime() + 3 * 60 * 60 * 1000) : null;
+          const isExpired = expiryTime ? (Date.now() > expiryTime.getTime()) : false;
+          
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedLeaveForQR.id)}&color=${isExpired ? "64748b" : "4f46e5"}&bgcolor=ffffff`;
 
           const formatTimeStr = (date) => {
             return date ? date.toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : 'N/A';
@@ -483,12 +485,27 @@ export const LeaveRequest = () => {
           return (
             <div className="space-y-6 text-center">
               <div id="qr-pass-content" className="space-y-5">
-                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 shadow-sm inline-block">
-                  <img 
-                    src={qrUrl} 
-                    alt="Leave QR Pass" 
-                    className="w-48 h-48 mx-auto border-4 border-white rounded-xl shadow-md"
-                  />
+                <div className={`border rounded-2xl p-5 shadow-sm inline-block relative overflow-hidden ${
+                  isExpired 
+                    ? "bg-slate-100 border-slate-200" 
+                    : "bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100"
+                }`}>
+                  <div className="relative">
+                    <img 
+                      src={qrUrl} 
+                      alt="Leave QR Pass" 
+                      className={`w-48 h-48 mx-auto border-4 border-white rounded-xl shadow-md transition-all duration-300 ${
+                        isExpired ? "opacity-30 blur-[0.5px]" : ""
+                      }`}
+                    />
+                    {isExpired && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                        <span className="border-4 border-double border-red-600 text-red-600 font-extrabold text-2xl px-3 py-1 uppercase tracking-widest rounded transform -rotate-12 bg-white/95 shadow-md">
+                          Expired
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-[11px] font-mono text-slate-400 mt-3 break-all bg-slate-100/50 py-1 px-2 rounded-lg border border-slate-200/50">
                     Token: {selectedLeaveForQR.id}
                   </p>

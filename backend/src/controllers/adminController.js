@@ -1225,4 +1225,52 @@ exports.bulkImportGuards = async (req, res) => {
   }
 };
 
+// @desc    Send attendance reminders to all students who have not marked attendance today
+// @route   POST /api/admin/attendance/remind
+// @access  Admin/Warden
+exports.sendAttendanceReminders = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const totalStudents = await User.find({ role: 'student' });
+    const todayRecords = await Attendance.find({ date: today });
+    const markedUserIds = new Set(todayRecords.map(r => r.userId.toString()));
+
+    const unmarkedStudents = totalStudents.filter(s => !markedUserIds.has(s._id.toString()));
+
+    if (unmarkedStudents.length === 0) {
+      return res.json({ success: true, count: 0, message: 'All students have marked attendance today.' });
+    }
+
+    // Distribute in background
+    const Notification = require('../models/Notification');
+    const emailService = require('../services/emailService');
+
+    (async () => {
+      for (const student of unmarkedStudents) {
+        try {
+          await Notification.create({
+            recipient: student._id,
+            sender: req.user._id,
+            title: `⏰ Attendance Reminder`,
+            message: `Please mark your attendance for today. Make sure you are inside the campus to check in.`,
+            type: 'attendance'
+          });
+          // Only send in-app notification, no emails for reminders
+        } catch (err) {
+          console.error(`Failed to send attendance reminder to student ${student.name}:`, err);
+        }
+      }
+    })();
+
+    res.json({
+      success: true,
+      count: unmarkedStudents.length,
+      message: `Reminders are being sent to ${unmarkedStudents.length} students.`
+    });
+  } catch (error) {
+    console.error('Send attendance reminders error:', error);
+    res.status(500).json({ error: 'Failed to send attendance reminders' });
+  }
+};
+
 

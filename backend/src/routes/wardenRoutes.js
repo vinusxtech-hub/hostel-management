@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, wardenOnly } = require('../middleware/auth');
 const wardenController = require('../controllers/wardenController');
+const adminController = require('../controllers/adminController');
 const noticeController = require('../controllers/noticeController');
 const leaveController = require('../controllers/leaveController');  // Integration: Leave Management System
 const multer = require('multer');
@@ -16,6 +17,7 @@ router.get('/students', wardenController.getStudents);
 router.post('/students', wardenController.addStudent);
 router.post('/students/bulk-import', upload.single('file'), wardenController.bulkImportStudents);
 router.get('/students/:id', wardenController.getStudentDetails);
+router.post('/attendance/remind', adminController.sendAttendanceReminders);
 router.get('/resolutions', wardenController.getResolutions);
 router.put('/resolutions/:id', wardenController.updateResolution);
 // Backward compatibility

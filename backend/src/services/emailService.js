@@ -317,3 +317,243 @@ exports.sendPasswordChangedEmail = async (email, name) => {
     console.error(`[EmailService] Password change notification failed for ${email}: ${err.message}`);
   });
 };
+
+/**
+ * Send an email notification for a leave request decision.
+ */
+exports.sendLeaveStatusEmail = async (recipientEmail, name, status, startDate, endDate, remarks, actionBy) => {
+  const portalUrl = process.env.PORTAL_URL || 'http://localhost:5173';
+  const senderName = process.env.SENDER_NAME || 'SISTec Hostel Management';
+  const senderEmail = process.env.SENDER_EMAIL || 'no-reply@sistechostel.in';
+  
+  const isApproved = status === 'Approved';
+  const themeColor = isApproved ? '#10b981' : '#ef4444';
+  const statusLabel = isApproved ? 'APPROVED ✅' : 'REJECTED ❌';
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: recipientEmail, name }],
+    subject: `Leave Pass Request Update — ${statusLabel}`,
+    htmlContent: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SISTec Hostel — Leave Pass Update</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .header { background: linear-gradient(135deg, ${themeColor} 0%, #6366f1 100%); padding: 36px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+    .header p { margin: 6px 0 0; color: rgba(255,255,255,0.8); font-size: 13px; }
+    .content { padding: 32px; }
+    .greeting { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+    .status-badge { display: inline-block; background: ${themeColor}1a; color: ${themeColor}; border: 1px solid ${themeColor}33; border-radius: 20px; padding: 6px 16px; font-size: 13px; font-weight: 800; margin-bottom: 20px; text-transform: uppercase; }
+    .details-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; margin: 20px 0; }
+    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .detail-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .detail-row:first-child { padding-top: 0; }
+    .detail-label { font-weight: 600; color: #64748b; }
+    .detail-value { font-weight: 700; color: #0f172a; }
+    .remarks-box { background: ${isApproved ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${isApproved ? '#bbf7d0' : '#fecaca'}; border-radius: 12px; padding: 16px 20px; font-size: 14px; color: ${isApproved ? '#166534' : '#991b1b'}; margin-top: 16px; }
+    .btn { display: inline-block; background: #4f46e5; color: #fff !important; font-weight: 700; font-size: 14px; padding: 13px 28px; border-radius: 10px; text-decoration: none; margin-top: 20px; }
+    .footer { background: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>🏛️ SISTEC HOSTEL PORTAL</h1>
+        <p>Leave Pass Request Decided</p>
+      </div>
+      <div class="content">
+        <span class="status-badge">${statusLabel}</span>
+        <p class="greeting">Hello ${name},</p>
+        <p>Your leave request has been reviewed by your hostel administration.</p>
+        
+        <div class="details-box">
+          <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value" style="color: ${themeColor};">${status}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Start Date</span>
+            <span class="detail-value">${new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">End Date</span>
+            <span class="detail-value">${new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Reviewed By</span>
+            <span class="detail-value">${actionBy}</span>
+          </div>
+        </div>
+
+        <div class="remarks-box">
+          <strong>Warden Remarks:</strong><br/>
+          ${remarks || 'No remarks provided.'}
+        </div>
+
+        ${isApproved ? `<p style="font-size: 13px; color: #475569; margin-top: 16px;">⚠️ <strong>Note:</strong> Your QR code is valid for exactly <strong>3 hours</strong> from the time of approval. If it expires, you must apply again.</p>` : ''}
+
+        <div style="text-align: center;">
+          <a href="${portalUrl}/login" class="btn">View Portal Dashboard</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>This is an automated email. Do not reply to this message.</p>
+        <p>© 2026 SISTec Hostel Administration. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`
+  };
+
+  console.log(`[EmailService] Sending leave status email (${status}) to ${recipientEmail}...`);
+  return sendBrevoEmail(payload).catch(err => {
+    console.error(`[EmailService] Failed to send leave status email to ${recipientEmail}: ${err.message}`);
+  });
+};
+
+/**
+ * Send an email notification for a new notice.
+ */
+exports.sendNoticeEmail = async (recipientEmail, name, title, content) => {
+  const portalUrl = process.env.PORTAL_URL || 'http://localhost:5173';
+  const senderName = process.env.SENDER_NAME || 'SISTec Hostel Management';
+  const senderEmail = process.env.SENDER_EMAIL || 'no-reply@sistechostel.in';
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: recipientEmail, name }],
+    subject: `🚨 New Hostel Notice: ${title}`,
+    htmlContent: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SISTec Hostel — New Notice</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 36px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+    .header p { margin: 6px 0 0; color: rgba(255,255,255,0.8); font-size: 13px; }
+    .content { padding: 32px; }
+    .greeting { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+    .notice-title { font-size: 18px; font-weight: 800; color: #1e293b; margin: 20px 0 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
+    .notice-body { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; font-size: 14px; color: #334155; white-space: pre-line; }
+    .btn { display: inline-block; background: #f59e0b; color: #fff !important; font-weight: 700; font-size: 14px; padding: 13px 28px; border-radius: 10px; text-decoration: none; margin-top: 24px; }
+    .footer { background: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>📢 SISTEC HOSTEL NOTICE</h1>
+        <p>New Announcement Published</p>
+      </div>
+      <div class="content">
+        <p class="greeting">Hello ${name},</p>
+        <p>A new official announcement has been published on the hostel portal. Please read the details below:</p>
+        
+        <h2 class="notice-title">${title}</h2>
+        <div class="notice-body">
+          ${content}
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${portalUrl}/login" class="btn">Log In to View Notices</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>This is an automated email. Do not reply to this message.</p>
+        <p>© 2026 SISTec Hostel Administration. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`
+  };
+
+  console.log(`[EmailService] Sending notice email ("${title}") to ${recipientEmail}...`);
+  return sendBrevoEmail(payload).catch(err => {
+    console.error(`[EmailService] Failed to send notice email to ${recipientEmail}: ${err.message}`);
+  });
+};
+
+/**
+ * Send an email reminder to mark attendance.
+ */
+exports.sendAttendanceReminderEmail = async (recipientEmail, name) => {
+  const portalUrl = process.env.PORTAL_URL || 'http://localhost:5173';
+  const senderName = process.env.SENDER_NAME || 'SISTec Hostel Management';
+  const senderEmail = process.env.SENDER_EMAIL || 'no-reply@sistechostel.in';
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: recipientEmail, name }],
+    subject: `⏰ Attendance Reminder — Action Required`,
+    htmlContent: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SISTec Hostel — Attendance Reminder</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .header { background: linear-gradient(135deg, #4f46e5 0%, #ec4899 100%); padding: 36px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+    .header p { margin: 6px 0 0; color: rgba(255,255,255,0.8); font-size: 13px; }
+    .content { padding: 32px; }
+    .greeting { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+    .warning-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 18px 20px; font-size: 14px; color: #92400e; margin: 20px 0; }
+    .btn { display: inline-block; background: #4f46e5; color: #fff !important; font-weight: 700; font-size: 14px; padding: 13px 28px; border-radius: 10px; text-decoration: none; margin-top: 16px; }
+    .footer { background: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>⏰ ATTENDANCE REMINDER</h1>
+        <p>Action Required</p>
+      </div>
+      <div class="content">
+        <p class="greeting">Hello ${name},</p>
+        <p>This is a reminder from the hostel administration that you have not yet marked your attendance for today.</p>
+        
+        <div class="warning-box">
+          ⚠️ <strong>Please Note:</strong> You must be inside the hostel campus bounds to mark your attendance via geofencing. Please ensure you mark your attendance before the daily cutoff time to avoid being marked absent.
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${portalUrl}/login" class="btn">Mark Attendance Now →</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>This is an automated email. Do not reply to this message.</p>
+        <p>© 2026 SISTec Hostel Administration. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`
+  };
+
+  console.log(`[EmailService] Sending attendance reminder email to ${recipientEmail}...`);
+  return sendBrevoEmail(payload).catch(err => {
+    console.error(`[EmailService] Failed to send attendance reminder email to ${recipientEmail}: ${err.message}`);
+  });
+};

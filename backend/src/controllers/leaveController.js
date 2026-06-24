@@ -375,6 +375,35 @@ exports.approveLeave = async (req, res) => {
     await leave.populate('studentId', 'name email room department hostelSection building phone');
     await leave.populate('approvedBy', 'name role');
 
+    // Create in-app notification & send email
+    try {
+      const Notification = require('../models/Notification');
+      const emailService = require('../services/emailService');
+
+      await Notification.create({
+        recipient: leave.studentId._id,
+        sender: req.user._id,
+        title: `Leave Pass Request Approved`,
+        message: `Your leave request from ${new Date(leave.startDate).toLocaleDateString('en-IN')} to ${new Date(leave.endDate).toLocaleDateString('en-IN')} has been approved by Warden ${req.user.name}.${leave.remarks ? ` Remarks: ${leave.remarks}` : ''}`,
+        type: 'leave',
+        relatedId: leave._id
+      });
+
+      if (leave.studentId?.email) {
+        emailService.sendLeaveStatusEmail(
+          leave.studentId.email,
+          leave.studentId.name,
+          'Approved',
+          leave.startDate,
+          leave.endDate,
+          leave.remarks,
+          req.user.name
+        ).catch(e => console.error('Error sending leave status email:', e));
+      }
+    } catch (notifErr) {
+      console.error('Failed to trigger leave approval notification:', notifErr);
+    }
+
     res.json({
       id: leave._id,
       studentName: leave.studentId?.name || 'Unknown',
@@ -434,6 +463,35 @@ exports.rejectLeave = async (req, res) => {
     // Re-populate for response
     await leave.populate('studentId', 'name email room department hostelSection building phone');
     await leave.populate('approvedBy', 'name role');
+
+    // Create in-app notification & send email
+    try {
+      const Notification = require('../models/Notification');
+      const emailService = require('../services/emailService');
+
+      await Notification.create({
+        recipient: leave.studentId._id,
+        sender: req.user._id,
+        title: `Leave Pass Request Rejected`,
+        message: `Your leave request from ${new Date(leave.startDate).toLocaleDateString('en-IN')} to ${new Date(leave.endDate).toLocaleDateString('en-IN')} has been rejected by Warden ${req.user.name}.${leave.remarks ? ` Remarks: ${leave.remarks}` : ''}`,
+        type: 'leave',
+        relatedId: leave._id
+      });
+
+      if (leave.studentId?.email) {
+        emailService.sendLeaveStatusEmail(
+          leave.studentId.email,
+          leave.studentId.name,
+          'Rejected',
+          leave.startDate,
+          leave.endDate,
+          leave.remarks,
+          req.user.name
+        ).catch(e => console.error('Error sending leave status email:', e));
+      }
+    } catch (notifErr) {
+      console.error('Failed to trigger leave rejection notification:', notifErr);
+    }
 
     res.json({
       id: leave._id,

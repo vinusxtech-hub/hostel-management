@@ -35,6 +35,7 @@ const adminNavigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Students', href: '/admin/students', icon: Users },
   { name: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
+  { name: 'Leaves', href: '/admin/leaves', icon: CalendarOff },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { name: 'Notices', href: '/admin/notices', icon: Megaphone },
   { name: 'Wardens', href: '/admin/wardens', icon: Shield },

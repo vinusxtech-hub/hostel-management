@@ -7,7 +7,7 @@ import { Modal } from "../../components/Modal";
 import { useToast } from "../../hooks/useToast";
 import { CardSkeleton } from "../../components/Skeleton";
 import { api } from "../../services/api";
-import { Search, MapPin, Plus, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Download, Users, Mail, Phone, Building, Calendar, Clock, UserCheck, UserX, ChevronRight, MessageSquare, TrendingUp, Eye, FileText } from "lucide-react";
+import { Search, MapPin, Plus, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Download, Users, Mail, Phone, Building, Calendar, Clock, UserCheck, UserX, ChevronRight, MessageSquare, TrendingUp, Eye, FileText, Shield } from "lucide-react";
 
 export const AdminStudents = () => {
   const [students, setStudents] = useState([]);

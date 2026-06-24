@@ -11,6 +11,8 @@ const wardenRoutes = require('./routes/wardenRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const guardRoutes = require('./routes/guardRoutes');
 
+const notificationRoutes = require('./routes/notificationRoutes');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -25,6 +27,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/warden', wardenRoutes);
 app.use('/api/device', deviceRoutes);
 app.use('/api/guard', guardRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -70,6 +73,10 @@ const startServer = async () => {
   // Integration: Leave Management System — cleanup expired leaves on startup
   const { cleanupExpiredLeaves } = require('./controllers/leaveController');
   await cleanupExpiredLeaves();
+
+  // Start automatic reminder scheduler
+  const { startReminderScheduler } = require('./services/reminderScheduler');
+  startReminderScheduler();
 
   console.log('Database connected and ready.');
   app.listen(PORT, () => {
