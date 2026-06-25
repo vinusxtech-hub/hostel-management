@@ -3,6 +3,14 @@ const Attendance = require('../models/Attendance');
 const Resolution = require('../models/Resolution');
 const Notice = require('../models/Notice');
 const Settings = require('../models/Settings');
+const { getLocalDateString } = require('../utils/dateHelper');
+
+const ALLOWED_ATTENDANCE_STATUSES = ['Present', 'Late', 'Absent', 'On Leave'];
+
+const normalizeAttendanceStatus = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ALLOWED_ATTENDANCE_STATUSES.find((status) => status.toLowerCase() === normalized);
+};
 
 const generateRandomPassword = (role) => {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -41,13 +49,13 @@ const normalizeYear = (value) => {
 // @route   GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const totalStudents = await User.countDocuments({ role: 'student' });
     const todayRecords = await Attendance.find({ date: today });
 
     const presentToday = todayRecords.filter(r => r.status === 'Present').length;
     const lateToday = todayRecords.filter(r => r.status === 'Late').length;
-    const absentToday = totalStudents - presentToday - lateToday;
+    const absentToday = todayRecords.filter(r => r.status === 'Absent').length;
 
     // Weekly chart data
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -55,11 +63,11 @@ exports.getDashboardStats = async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const dayRecords = await Attendance.find({ date: dateStr });
       const dayPresent = dayRecords.filter(r => r.status === 'Present').length;
       const dayLate = dayRecords.filter(r => r.status === 'Late').length;
-      const dayAbsent = totalStudents - dayPresent - dayLate;
+      const dayAbsent = dayRecords.filter(r => r.status === 'Absent').length;
       weeklyData.push({
         day: days[d.getDay()],
         present: dayPresent,
@@ -120,7 +128,7 @@ exports.getStudents = async (req, res) => {
       ]
     }).sort({ name: 1 });
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     const result = await Promise.all(students.map(async (student) => {
       // Get today's attendance
@@ -519,7 +527,13 @@ exports.getAttendance = async (req, res) => {
     const filter = {};
 
     if (date) filter.date = date;
-    if (status && status !== 'all') filter.status = status;
+    if (status && String(status).trim().toLowerCase() !== 'all') {
+      const normalizedStatus = normalizeAttendanceStatus(status);
+      if (!normalizedStatus) {
+        return res.status(400).json({ error: 'Invalid attendance status filter' });
+      }
+      filter.status = normalizedStatus;
+    }
 
     const records = await Attendance.find(filter)
       .populate('userId', 'name room email department')
@@ -533,7 +547,7 @@ exports.getAttendance = async (req, res) => {
       email: r.userId?.email || '',
       date: r.date,
       time: r.time,
-      status: r.status,
+      status: String(r.status || '').trim(),
       location: r.location,
       latitude: r.latitude,
       longitude: r.longitude,
@@ -586,8 +600,8 @@ exports.getReports = async (req, res) => {
       const weekStart = new Date(weekEnd);
       weekStart.setDate(weekStart.getDate() - 6);
 
-      const startStr = weekStart.toISOString().split('T')[0];
-      const endStr = weekEnd.toISOString().split('T')[0];
+      const startStr = getLocalDateString(weekStart);
+      const endStr = getLocalDateString(weekEnd);
 
       const records = await Attendance.find({
         date: { $gte: startStr, $lte: endStr }
@@ -602,8 +616,8 @@ exports.getReports = async (req, res) => {
     }
 
     // Pie data for current month
-    const now = new Date();
-    const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const today = getLocalDateString();
+    const currentMonthStart = `${today.split('-').slice(0, 2).join('-')}-01`;
     const currentRecords = await Attendance.find({ date: { $gte: currentMonthStart } });
 
     const pieData = [
@@ -1230,7 +1244,7 @@ exports.bulkImportGuards = async (req, res) => {
 // @access  Admin/Warden
 exports.sendAttendanceReminders = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const totalStudents = await User.find({ role: 'student' });
     const todayRecords = await Attendance.find({ date: today });
     const markedUserIds = new Set(todayRecords.map(r => r.userId.toString()));

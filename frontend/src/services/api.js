@@ -1,12 +1,32 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const STORAGE_TOKEN_KEY = 'hostel_token';
+const STORAGE_USER_KEY = 'hostel_user';
 
-// Get JWT token from localStorage
-const getToken = () => localStorage.getItem('hostel_token');
+const migrateAuthFromLocalStorage = () => {
+  const localToken = localStorage.getItem(STORAGE_TOKEN_KEY);
+  if (localToken && !sessionStorage.getItem(STORAGE_TOKEN_KEY)) {
+    sessionStorage.setItem(STORAGE_TOKEN_KEY, localToken);
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
+  }
+
+  const localUser = localStorage.getItem(STORAGE_USER_KEY);
+  if (localUser && !sessionStorage.getItem(STORAGE_USER_KEY)) {
+    sessionStorage.setItem(STORAGE_USER_KEY, localUser);
+    localStorage.removeItem(STORAGE_USER_KEY);
+  }
+};
+
+const getToken = () => {
+  migrateAuthFromLocalStorage();
+  return sessionStorage.getItem(STORAGE_TOKEN_KEY);
+};
 
 const handleResponse = async (response) => {
   if (response.status === 401 && !response.url.includes('/auth/login')) {
-    localStorage.removeItem('hostel_token');
-    localStorage.removeItem('hostel_user');
+    sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+    sessionStorage.removeItem(STORAGE_USER_KEY);
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
+    localStorage.removeItem(STORAGE_USER_KEY);
     window.location.href = '/login';
     throw new Error('Session expired. Please log in again.');
   }

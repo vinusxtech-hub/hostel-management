@@ -1,6 +1,7 @@
 const LeaveRequest = require('../models/LeaveRequest');
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
+const { getLocalDateString } = require('../utils/dateHelper');
 
 // ============================================================
 // Leave Controller
@@ -37,7 +38,7 @@ const getStudentIdsForSection = async (wardenSection, wardenBuilding) => {
 };
 
 // Helper: Get date string in YYYY-MM-DD format
-const toDateStr = (date) => new Date(date).toISOString().split('T')[0];
+const toDateStr = (date) => getLocalDateString(date);
 
 // Helper: Get all dates between start and end (inclusive)
 const getDateRange = (start, end) => {

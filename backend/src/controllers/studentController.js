@@ -2,6 +2,7 @@ const Attendance = require('../models/Attendance');
 const Resolution = require('../models/Resolution');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
+const { getLocalDateString, getLocalTimeStr } = require('../utils/dateHelper');
 
 // Haversine formula to calculate distance in km
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
@@ -68,29 +69,41 @@ exports.markAttendance = async (req, res) => {
     }
 
     // Check for duplicate entry today
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const existingRecord = await Attendance.findOne({
       userId: req.user._id,
       date: today
     });
 
-    if (existingRecord) {
-      return res.status(400).json({
-        error: 'Attendance already marked for today',
-        existingRecord
-      });
-    }
-
-    // Determine status based on time
     const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const timeStr = getLocalTimeStr(now);
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const currentMinutes = hours * 60 + minutes;
     
     // Parse cutoff time (e.g. "22:00")
     const [cutoffH, cutoffM] = settings.cutoffTime.split(':').map(Number);
     const cutoffMinutes = cutoffH * 60 + cutoffM;
     
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    const status = currentMinutes >= cutoffMinutes ? 'Late' : 'Present';
+    let status = currentMinutes >= cutoffMinutes ? 'Late' : 'Present';
+
+    if (existingRecord) {
+      if (existingRecord.status === 'Absent') {
+        const updatedStatus = currentMinutes >= cutoffMinutes ? 'Late' : 'Present';
+        existingRecord.status = updatedStatus;
+        existingRecord.time = timeStr;
+        existingRecord.timestamp = now;
+        existingRecord.latitude = latitude;
+        existingRecord.longitude = longitude;
+        existingRecord.distance = parseFloat(distance.toFixed(4));
+        existingRecord.location = 'Inside';
+        await existingRecord.save();
+        return res.status(200).json(existingRecord);
+      }
+      return res.status(400).json({
+        error: 'Attendance already marked for today',
+        existingRecord
+      });
+    }
 
     const newRecord = await Attendance.create({
       userId: req.user._id,
@@ -131,7 +144,7 @@ exports.getReports = async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const dayRecord = records.find(r => r.date === dateStr);
       weeklyData.push({
         name: days[d.getDay()],
@@ -150,8 +163,8 @@ exports.getReports = async (req, res) => {
       const month = d.getMonth();
       const year = d.getFullYear();
       const monthRecords = records.filter(r => {
-        const rd = new Date(r.date);
-        return rd.getMonth() === month && rd.getFullYear() === year;
+        const [rYear, rMonth, rDay] = r.date.split('-').map(Number);
+        return (rMonth - 1) === month && rYear === year;
       });
       const monthTotal = monthRecords.length || 1;
       const monthPresent = monthRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;

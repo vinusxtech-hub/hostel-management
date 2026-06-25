@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Resolution = require('../models/Resolution');
 const LeaveRequest = require('../models/LeaveRequest');  // Integration: Leave Management System
+const { getLocalDateString } = require('../utils/dateHelper');
 
 const generateRandomPassword = (role) => {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -49,7 +50,7 @@ const getWardenStudentFilter = (user) => {
 // @route   GET /api/warden/stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const studentFilter = { role: 'student', ...getWardenStudentFilter(req.user) };
     const studentIds = await User.find(studentFilter).distinct('_id');
     const totalStudents = studentIds.length;
@@ -57,7 +58,7 @@ exports.getDashboardStats = async (req, res) => {
 
     const presentToday = todayRecords.filter(r => r.status === 'Present').length;
     const lateToday = todayRecords.filter(r => r.status === 'Late').length;
-    const absentToday = totalStudents - presentToday - lateToday;
+    const absentToday = todayRecords.filter(r => r.status === 'Absent').length;
 
     // Resolution stats
     const resolutionFilter = studentIds.length ? { userId: { $in: studentIds } } : { userId: null };
@@ -159,7 +160,7 @@ exports.getDashboardStats = async (req, res) => {
 exports.getStudents = async (req, res) => {
   try {
     const students = await User.find({ role: 'student', ...getWardenStudentFilter(req.user) }).sort({ name: 1 });
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     const result = await Promise.all(students.map(async (student) => {
       const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
@@ -258,7 +259,7 @@ exports.getStudentDetails = async (req, res) => {
     }
 
     // Today's status
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const todayRecord = await Attendance.findOne({ userId: student._id, date: today });
 
     // Count monthly leaves (approved in last 30 days)

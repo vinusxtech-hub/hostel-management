@@ -12,6 +12,32 @@ export const useAuth = () => {
   return context;
 };
 
+const STORAGE_TOKEN_KEY = "hostel_token";
+const STORAGE_USER_KEY = "hostel_user";
+
+const getStoredUser = () => {
+  const storedUser = sessionStorage.getItem(STORAGE_USER_KEY);
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser);
+  } catch {
+    sessionStorage.removeItem(STORAGE_USER_KEY);
+    return null;
+  }
+};
+
+const migrateAuthFromLocalStorage = () => {
+  if (!sessionStorage.getItem(STORAGE_TOKEN_KEY) && localStorage.getItem(STORAGE_TOKEN_KEY)) {
+    sessionStorage.setItem(STORAGE_TOKEN_KEY, localStorage.getItem(STORAGE_TOKEN_KEY));
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
+  }
+
+  if (!sessionStorage.getItem(STORAGE_USER_KEY) && localStorage.getItem(STORAGE_USER_KEY)) {
+    sessionStorage.setItem(STORAGE_USER_KEY, localStorage.getItem(STORAGE_USER_KEY));
+    localStorage.removeItem(STORAGE_USER_KEY);
+  }
+};
+
 // Collect device info using ua-parser-js and send to backend
 const sendDeviceInfo = async () => {
   try {
@@ -36,72 +62,64 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, check for existing token and load user
   useEffect(() => {
     const loadUser = async () => {
-      const token = localStorage.getItem("hostel_token");
+      migrateAuthFromLocalStorage();
+      const token = sessionStorage.getItem(STORAGE_TOKEN_KEY);
+      const storedUser = getStoredUser();
+
+      if (token && storedUser) {
+        setUser(storedUser);
+      }
+
       if (token) {
         try {
           const data = await api.auth.getMe();
           setUser(data.user);
-          // Send device info on app reload with existing session
+          sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
           sendDeviceInfo();
         } catch (err) {
-          // Token expired or invalid
-          localStorage.removeItem("hostel_token");
-          localStorage.removeItem("hostel_user");
+          sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+          sessionStorage.removeItem(STORAGE_USER_KEY);
+          setUser(null);
         }
       }
+
       setIsLoading(false);
     };
+
     loadUser();
   }, []);
 
-  // Cross-tab session sync: if another tab logs out, update this tab too
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === "hostel_token" && !e.newValue) {
-        // Token was removed in another tab → log out here too
-        setUser(null);
-      }
-      if (e.key === "hostel_token" && e.newValue && !user) {
-        // Another tab logged in → reload to pick up the session
-        window.location.reload();
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [user]);
-
   const login = async (email, password) => {
     const data = await api.auth.login(email, password);
-    localStorage.setItem("hostel_token", data.token);
-    localStorage.setItem("hostel_user", JSON.stringify(data.user));
+    sessionStorage.setItem(STORAGE_TOKEN_KEY, data.token);
+    sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
     setUser(data.user);
-    // Send device info after successful login
     sendDeviceInfo();
     return data.user;
   };
 
   const register = async (userData) => {
     const data = await api.auth.register(userData);
-    localStorage.setItem("hostel_token", data.token);
-    localStorage.setItem("hostel_user", JSON.stringify(data.user));
+    sessionStorage.setItem(STORAGE_TOKEN_KEY, data.token);
+    sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
     setUser(data.user);
-    // Send device info after successful registration
     sendDeviceInfo();
     return data.user;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("hostel_token");
-    localStorage.removeItem("hostel_user");
+    sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+    sessionStorage.removeItem(STORAGE_USER_KEY);
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
+    localStorage.removeItem(STORAGE_USER_KEY);
   };
 
   const updateUser = (updatedData) => {
     setUser(prev => ({ ...prev, ...updatedData }));
-    localStorage.setItem("hostel_user", JSON.stringify({ ...user, ...updatedData }));
+    sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify({ ...user, ...updatedData }));
   };
 
   const value = {

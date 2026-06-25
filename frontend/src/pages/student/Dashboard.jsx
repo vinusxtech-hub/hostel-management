@@ -122,6 +122,20 @@ export const Dashboard = () => {
     };
     loadSettings();
 
+    const loadTodayStatus = async () => {
+      try {
+        const history = await api.student.getAttendanceHistory();
+        const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' });
+        const todayRecord = history.find(r => r.date === today);
+        if (todayRecord) {
+          setAttendanceStatus(todayRecord);
+        }
+      } catch (err) {
+        console.error('Failed to load today status:', err);
+      }
+    };
+    loadTodayStatus();
+
     // Load active leave pass
     const loadLeaves = async () => {
       try {
@@ -474,30 +488,57 @@ export const Dashboard = () => {
       </div>
 
       {/* Mark Attendance Button */}
-      <div className="flex items-center gap-4 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
-        <Button
-          onClick={handleMarkAttendance}
-          isLoading={isMarkingAttendance}
-          disabled={!location || !isInsideCampus || !!geoError || !timeInfo.isOpen}
-          size="lg"
-          className={`text-base shadow-xl ${timeInfo.isOpen ? 'shadow-primary-500/20' : 'shadow-slate-300/20 !bg-slate-400 cursor-not-allowed'}`}
-        >
-          {!timeInfo.isOpen ? (
-            <><Lock className="w-5 h-5 mr-2" /> Window Closed</>
-          ) : isMarkingAttendance ? (
-            "Marking..."
-          ) : geoError ? (
-            "Location Unavailable"
-          ) : !isInsideCampus ? (
-            "Outside Campus"
-          ) : (
-            <><CheckCircle className="w-5 h-5 mr-2" /> Mark Attendance</>
-          )}
-        </Button>
-        <Button variant="secondary" size="lg" onClick={refreshLocation}>
-          <RefreshCw className="w-5 h-5" />
-        </Button>
-      </div>
+      {(() => {
+        const hasAlreadyMarked = attendanceStatus && ['Present', 'Late', 'On Leave'].includes(attendanceStatus.status);
+        const isAbsent = attendanceStatus?.status === 'Absent';
+        const canMarkLate = isAbsent;
+        
+        const isButtonDisabled =
+          isMarkingAttendance ||
+          hasAlreadyMarked ||
+          !location ||
+          !!geoError ||
+          (!timeInfo.isOpen && !canMarkLate);
+
+        const buttonActiveColorClass = (timeInfo.isOpen || canMarkLate)
+          ? 'shadow-primary-500/20'
+          : 'shadow-slate-300/20 !bg-slate-400 cursor-not-allowed';
+
+        let buttonLabel = <><CheckCircle className="w-5 h-5 mr-2" /> Mark Attendance</>;
+        if (hasAlreadyMarked) {
+          buttonLabel = <><CheckCircle className="w-5 h-5 mr-2" /> Attendance Marked</>;
+          if (attendanceStatus.status === 'On Leave') {
+            buttonLabel = <><CheckCircle className="w-5 h-5 mr-2" /> On Leave</>;
+          }
+        } else if (isMarkingAttendance) {
+          buttonLabel = "Marking...";
+        } else if (geoError) {
+          buttonLabel = "Location Unavailable";
+        } else if (!isInsideCampus) {
+          buttonLabel = "Outside Campus";
+        } else if (!timeInfo.isOpen && canMarkLate) {
+          buttonLabel = <><Clock className="w-5 h-5 mr-2" /> Mark Late Attendance</>;
+        } else if (!timeInfo.isOpen) {
+          buttonLabel = <><Lock className="w-5 h-5 mr-2" /> Window Closed</>;
+        }
+
+        return (
+          <div className="flex items-center gap-4 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
+            <Button
+              onClick={handleMarkAttendance}
+              isLoading={isMarkingAttendance}
+              disabled={isButtonDisabled}
+              size="lg"
+              className={`text-base shadow-xl ${buttonActiveColorClass}`}
+            >
+              {buttonLabel}
+            </Button>
+            <Button variant="secondary" size="lg" onClick={refreshLocation}>
+              <RefreshCw className="w-5 h-5" />
+            </Button>
+          </div>
+        );
+      })()}
 
       {/* Active Leave Pass with QR Code */}
       {activeLeavePass && leavePassTimeLeft !== null && (() => {
